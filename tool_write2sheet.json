@@ -1,0 +1,216 @@
+{
+  "name": "tool_write2sheet",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "resultVideoUrl"
+            },
+            {
+              "name": "content"
+            },
+            {
+              "name": "title"
+            },
+            {
+              "name": "youtubeUrl"
+            }
+          ]
+        }
+      },
+      "id": "632d57d8-40bc-4c8b-a73d-948c842f1c63",
+      "typeVersion": 1.1,
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        16,
+        976
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1PgWHiyMztcMEiNAhLR0VeQ_-MGSrYVkAqOquCn96jSE",
+          "mode": "list",
+          "cachedResultName": "Social Media Auto Post",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PgWHiyMztcMEiNAhLR0VeQ_-MGSrYVkAqOquCn96jSE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "AutoPost Status",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PgWHiyMztcMEiNAhLR0VeQ_-MGSrYVkAqOquCn96jSE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Copy": "={{ $json.title }}{{ $json.content }}",
+            "URL": "={{ $json.youtubeUrl }}",
+            "Final Video": "={{ $json.resultVideoUrl }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Handle",
+              "displayName": "Handle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Copy",
+              "displayName": "Copy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Final Video",
+              "displayName": "Final Video",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Posted to Instagram",
+              "displayName": "Posted to Instagram",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Posted to TikTok",
+              "displayName": "Posted to TikTok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Posted to Facebook Page",
+              "displayName": "Posted to Facebook Page",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Posted to YouTube",
+              "displayName": "Posted to YouTube",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Posted to Pinterest",
+              "displayName": "Posted to Pinterest",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        976
+      ],
+      "id": "d4d69e5c-86a5-47f2-9627-a5494bb7b40e",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rZvsE58CKXrijwtX",
+          "name": "tingsong gmail"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Start": [
+      {
+        "json": {
+          "resultVideoUrl": "https://storage.rendi.dev/files/2882d111-b773-4bbc-9c4e-a9c4a66c3d79/29d34adc-3309-4c22-8cb6-4c35a9cb79ea/final_video.mp4",
+          "title": "Golden Gown Runway Highlight — Couture Dress Walk",
+          "content": "12s couture runway highlight — a model gracefully walks in a shimmering golden gown, showcasing the delicate bodice, sparkling fabric and flowing sheer train. Shot with blur-to-sharp transitions and close-ups on the fabric’s movement. #fashion #runway #couture #gown #glamour",
+          "youtubeUrl": "https://www.youtube.com/shorts/rjSiGLmLls0"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d2607a49-c0c6-437f-8825-5a7a20153295",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d73e47fbd672d304f06524b896d7eb8ee2688cc66dabdc7a4d0908c88a41b5f"
+  },
+  "id": "WycMqQQnx4mD3yLj",
+  "tags": []
+}

@@ -1,0 +1,1160 @@
+{
+  "name": "Tool Use v2.5",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## V1.5：\n添加并发处理，提速60%~80%，token节省50%   系统更稳定",
+        "width": 592,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        9184,
+        4128
+      ],
+      "id": "7ff94bd9-c6e8-4d36-a463-c25206b9612f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {
+          "loadPreviousSession": "memory",
+          "responseMode": "streaming"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        9856,
+        3952
+      ],
+      "id": "59375622-3a5e-4ddd-aa3b-cf5e5e27bca9",
+      "name": "When chat message received",
+      "webhookId": "d5a8dad4-c2f6-4d8d-983e-583229e0f859"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        11440,
+        4384
+      ],
+      "id": "79cb170b-6157-4a2d-873e-8767dce9e829",
+      "name": "Simple Memory2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.2-pro",
+          "mode": "list",
+          "cachedResultName": "gpt-5.2-pro"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        10208,
+        4176
+      ],
+      "id": "3730ed55-4dd5-43e9-99ce-ab2142a0e1fe",
+      "name": "gpt5",
+      "credentials": {
+        "openAiApi": {
+          "id": "grbrqXsow9DYiMs5",
+          "name": "OpenAi account gpt5"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        10464,
+        4176
+      ],
+      "id": "b239d2b5-303a-4d78-862a-1fa909fc05f4",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        10928,
+        4384
+      ],
+      "id": "67e1330e-e03a-4a39-8dad-f1f18a5b25d3",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "egsGXGPqNgqw3fPn",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 目前使用的api平台\n\n1.supbase（数据库\n2.apify （下载youtube，自部署转场检测，转场截图）\n3.fal.ai 视频模型\n4.rendi-ffmpeg\n\ngmini gpt deepseek",
+        "height": 288,
+        "width": 592,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        9184,
+        4304
+      ],
+      "id": "c481fa91-a607-4be5-8a0f-f03ac4daf488",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "description": "analyze youtube short video",
+        "workflowId": {
+          "__rl": true,
+          "value": "bXiozlE9a83aomxP",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/bXiozlE9a83aomxP",
+          "cachedResultName": "Afflux — tool_cacheAndAnalyzeVideo"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "youtube_video_url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('youtube_video_url', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "youtube_video_url"
+          ],
+          "schema": [
+            {
+              "id": "youtube_video_url",
+              "displayName": "youtube_video_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        10592,
+        4176
+      ],
+      "id": "31df566b-1e98-40bb-a7ef-a07f5c597385",
+      "name": "Call 'tool_cacheAndAnalyzeVideo'"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        9856,
+        4592
+      ],
+      "id": "a8fbfd74-0fd3-41e2-ad0e-df45c2b187e0",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "lk2Hh7FYTTapvDqs",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings",
+        "height": 288,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        9712,
+        4416
+      ],
+      "id": "969a5fd9-a4e6-4a2f-9713-d5d6a63beede",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Problem in node ‘composeAgent1‘\nCannot read properties of undefined (reading 'parts')",
+        "height": 304,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        9680,
+        4432
+      ],
+      "id": "4d5b9c7f-2e50-4d73-8cba-be485cc51271",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        11312,
+        4384
+      ],
+      "id": "f358b9a7-d7da-4f14-b060-f8cd1224139a",
+      "name": "gpt",
+      "credentials": {
+        "openAiApi": {
+          "id": "grbrqXsow9DYiMs5",
+          "name": "OpenAi account gpt5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "xE2IsDzVZRUKAyqu",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/xE2IsDzVZRUKAyqu",
+          "cachedResultName": "Afflux — tool_batch_pic2video"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "images": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('images', ``, 'json') }}"
+          },
+          "matchingColumns": [
+            "images"
+          ],
+          "schema": [
+            {
+              "id": "images",
+              "displayName": "images",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        10720,
+        4176
+      ],
+      "id": "38179feb-448a-46ce-b375-200330080dd5",
+      "name": "Call 'tool_batch_pic2video'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "94x7rA7v7PyiKtCk",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/94x7rA7v7PyiKtCk",
+          "cachedResultName": "Afflux — tool_batch_gemini_edit_image"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "images": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('images', ``, 'json') }}"
+          },
+          "matchingColumns": [
+            "images"
+          ],
+          "schema": [
+            {
+              "id": "images",
+              "displayName": "images",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        10848,
+        4176
+      ],
+      "id": "7c6c3025-6bf0-46a7-b1f9-29803b70d680",
+      "name": "Call 'tool_batch_gemini_edit_image'"
+    },
+    {
+      "parameters": {
+        "description": "this is a tool can run ffmpeg in cloud,Run FFmpeg commands in cloud.\nInput body format:\n{\n  \"ffmpeg_command\": \"-i {{in_1}} -vf ... {{out_1}}\",\n  \"input_files\": {\"in_1\": \"https://...\"},\n  \"output_files\": {\"out_1\": \"output.mp4\"},\n  \"max_command_run_seconds\": 300\n}\nUse {{in_X}} for inputs, {{out_X}} for outputs.",
+        "workflowId": {
+          "__rl": true,
+          "value": "zmFFZzYXZNMjeQRn",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/zmFFZzYXZNMjeQRn",
+          "cachedResultName": "Agent clip video — tool_rendi_ffmpeg"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "body": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('body', ``, 'json') }}"
+          },
+          "matchingColumns": [
+            "body"
+          ],
+          "schema": [
+            {
+              "id": "body",
+              "displayName": "body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        11184,
+        4384
+      ],
+      "id": "5c321924-7fef-40d7-b76c-a16e188e67ba",
+      "name": "Call 'tool_rendi_ffmpeg'"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        11056,
+        4384
+      ],
+      "id": "a3a87297-0c5b-4b2d-9989-7fbda7c11f25",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        9856,
+        4384
+      ],
+      "id": "b104b304-48bf-4aa0-8b29-9f5d798f9375",
+      "name": "DeepSeek Chat Model1",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "egsGXGPqNgqw3fPn",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "AI Agent can use ffmpeg compose video",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "### 1. Compose Final Video (Precision Cutting & Safety Logic)\n\nYou will receive an array of `video_clips`. Each item contains:\n- `url`: The video file url.\n- `trim_duration`: The EXACT duration this clip should be visible (e.g., 0.7s, 11.1005s).\n- `generated_duration`: The actual length of the video file.\n\n**FFmpeg Command Construction Rules (Strict Filter Complex):**\n\n1. **Robust Filter Chain (Scale -> Pad -> Trim -> PTS)**:\n   For EACH input video `[i:v]`, you MUST construct a filter chain that ensures reliability. \n   **Do NOT use input `-t` flags.** Use `filter_complex` for everything to ensure synchronization.\n   \n   **The Filter Sequence for each clip:**\n   `[i:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,tpad=stop_mode=clone:stop_duration=1,trim=duration={trim_duration},setpts=PTS-STARTPTS[v{i}]`\n\n   **Why this chain?**\n   - **Scale/Pad**: Forces all clips to 1080x1920 (9:16) to prevent \"resolution mismatch\" errors during concat.\n   - **tpad (CRITICAL SAFETY)**: Adds 1 second of \"cloned last frame\" to the end of the video. \n     *Reason*: If `generated_duration` (11s) < `trim_duration` (11.1s), `tpad` fills the gap seamlessly so the video doesn't freeze or crash.\n   - **trim**: Cuts the video to the EXACT `trim_duration` needed for the beat.\n   - **setpts**: Resets timestamps so the concat runs smoothly.\n\n2. **Concatenation**: \n   Combine all processed streams `[v0][v1]...` using the `concat` filter.\n   Example: `[v0][v1][v2]concat=n=3:v=1:a=0[outv]`\n\n3. **Audio Mixing**: \n   - Add the audio input (usually the last input file).\n   - Map it to the output using `-map [outv] -map {audio_index}:a`.\n   - Ensure the `-shortest` flag is NOT used (we want the video visual flow to dictate length, even if audio is slightly different).\n\n**🚨 CRITICAL: OUTPUT PLACEHOLDER RULE**\n- You MUST use `{{out_1}}` as the output file in ffmpeg_command\n- NEVER use actual filenames like `output.mp4` or `video.mp4`\n- The API will REJECT commands without `{{out_1}}`\n\n**Example FFmpeg Command Logic:**\n*Scenario: Clip A (needs 0.7s), Clip B (needs 11.1s but file is only 11s), Audio at index 2.*\n\n**CORRECT body format:**\n```json\n{\n  \"ffmpeg_command\": \"-i {{in_1}} -i {{in_2}} -i {{in_3}} -filter_complex \\\"[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,tpad=stop_mode=clone:stop_duration=1,trim=duration=0.7,setpts=PTS-STARTPTS[v0];[1:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,tpad=stop_mode=clone:stop_duration=1,trim=duration=11.1,setpts=PTS-STARTPTS[v1];[v0][v1]concat=n=2:v=1:a=0[outv]\\\" -map \\\"[outv]\\\" -map 2:a -c:v libx264 -preset fast {{out_1}}\",\n  \"input_files\": {\"in_1\": \"https://clip1.mp4\", \"in_2\": \"https://clip2.mp4\", \"in_3\": \"https://audio.mp3\"},\n  \"output_files\": {\"out_1\": \"final_video.mp4\"},\n  \"max_command_run_seconds\": 300\n}\n```\n\n**Execution**:\n- Construct the command based on the inputs.\n- If FFmpeg fails, analyze the error (often resolution mismatch or filter syntax), fix it, and retry.\n\nthis is the api docs:\n# Run FFmpeg Command\n\n> Submit an FFmpeg command for processing with input and output file specifications.\n\n## OpenAPI\n\n````yaml POST /v1/run-ffmpeg-command\nopenapi: 3.1.0\ninfo:\n  title: FFmpeg Command API\n  description: API for running FFmpeg in a cloud environment\n  version: 1.0.0\nservers:\n  - url: https://api.rendi.dev\n    description: Rendi - FFmpeg API\nsecurity: []\npaths:\n  /v1/run-ffmpeg-command:\n    post:\n      tags:\n        - API\n        - FFmpeg Commands\n      summary: Run FFmpeg Command\n      description: >-\n        Submit an FFmpeg command for processing with input and output file\n        specifications.\n      operationId: run_ffmpeg_command_v1_run_ffmpeg_command_post\n      requestBody:\n        content:\n          application/json:\n            schema:\n              $ref: '#/components/schemas/FFmpegCommandRequest'\n        required: true\n      responses:\n        '200':\n          description: Successfully submitted FFmpeg command\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/RunCommandResponse'\n              example:\n                command_id: 123e4567-e89b-12d3-a456-426614174000\n        '401':\n          description: Invalid API key\n          content:\n            application/json:\n              example:\n                detail: Invalid authorization key\n        '403':\n          description: Account quota exceeded or plan does not support this command\n        '422':\n          description: Validation Error\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/HTTPValidationError'\n        '429':\n          description: Rate limit exceeded\n      security:\n        - APIKeyHeader: []\ncomponents:\n  schemas:\n    FFmpegCommandRequest:\n      properties:\n        input_files:\n          additionalProperties:\n            type: string\n          type: object\n          title: Input Files\n          description: |-\n            Dictionary mapping file aliases to their publicly accessible paths, \n                    file name should appear in the end of the url, keys are alphanumeric, with underscore allowed, must start with 'in_'. \n                    You can use public file urls, google drive, dropbox, rendi stored files, s3 stored files, etc. as long as they are publicly accessible.\n          examples:\n            - in_1: >-\n                https://storage.rendi.dev/sample/big_buck_bunny_720p_5sec_intro.mp4\n              in_2: >-\n                https://storage.rendi.dev/sample/big_buck_bunny_720p_5sec_outro.mp4\n        output_files:\n          additionalProperties:\n            type: string\n          type: object\n          title: Output Files\n          description: >-\n            Dictionary mapping file aliases to their desired output file names,\n            keys are alphanumeric, with underscore allowed, must start with\n            'out_'\n          examples:\n            - out_1: output_one.mp4\n              out_2: output_two.mp4\n        max_command_run_seconds:\n          type: number\n          exclusiveMinimum: 0\n          title: Max Command Run Seconds\n          description: >-\n            Maximum allowed runtime in seconds for a single FFmpeg command, the\n            default is 300 seconds\n          examples:\n            - 300\n        vcpu_count:\n          type: integer\n          exclusiveMinimum: 0\n          title: Vcpu Count\n          description: >-\n            Number of virtual CPUs to use for a single ffmpeg command, the\n            default is 8, up to your account's maximum. Multiple commands can\n            run in parallel as long as their total vCPU usage doesn't exceed\n            your quota.\n          examples:\n            - 8\n        ffmpeg_command:\n          type: string\n          title: Ffmpeg Command\n          description: >-\n            FFmpeg command string using {{alias}} placeholders for input and\n            output files.\n\n            Input file keys should start with 'in_' prefix, for example:\n            in_video1. Output file keys should start with 'out_' prefix, for\n            example: out_1.\n\n            If you're using an automation platform where curly brackets are used\n            special as characters (like make.com, zapier, or other) add\n            backslashes before the curly brackets, for example, replace {{in_1}}\n            with backslashes and brackets \\\\{\\\\{in_1\\\\}\\\\}.\n          examples:\n            - >-\n              -i {{in_1}} -i {{in_2}} -filter_complex\n              \"[0:v][1:v]hstack=inputs=2[v]\" -map [v] {{out_1}}\n      type: object\n      required:\n        - input_files\n        - output_files\n        - ffmpeg_command\n      title: FFmpegCommandRequest\n      description: >-\n        Request model for submitting a single FFmpeg command.\n\n\n        This model allows submitting an FFmpeg command with input and output\n        file specifications.\n\n        Input file aliases must start with 'in_' and direct to a publicly\n        accessible file, and\n\n        output file aliases must start with 'out_' and only name a file name to\n        be created.\n\n\n        If you're using an automation platform where curly brackets are used\n        special as characters\n\n        (like make.com, zapier, or other) add backslashes before the curly\n        brackets, for example, replace {{in_1}} with backslashes and brackets\n        \\\\{\\\\{in_1\\\\}\\\\}.\n      example:\n        ffmpeg_command: >-\n          -i {{in_1}} -vf\n          \"select='lte(t,60)*gt(trunc(t/10),trunc(prev_t/10))',setpts='PTS*0.025',scale=trunc(oh*a/2)*2:320:force_original_aspect_ratio=decrease,pad=trunc(oh*a/2)*2:320:-1:-1\"\n          -an -vsync vfr {{out_1}}\n        input_files:\n          in_1: https://storage.rendi.dev/sample/sample.avi\n        max_command_run_seconds: 300\n        output_files:\n          out_1: output1.gif\n        vcpu_count: 8\n    RunCommandResponse:\n      properties:\n        command_id:\n          type: string\n          format: uuid\n          title: Command Id\n          description: Unique identifier for the submitted command\n          examples:\n            - 123e4567-e89b-12d3-a456-426614174000\n      type: object\n      required:\n        - command_id\n      title: RunCommandResponse\n      description: >-\n        Response model for command submission.\n\n\n        Contains the unique identifier assigned to the submitted command that\n        can be used\n\n        to poll for status and retrieve results.\n    HTTPValidationError:\n      properties:\n        detail:\n          items:\n            $ref: '#/components/schemas/ValidationError'\n          type: array\n          title: Detail\n      type: object\n      title: HTTPValidationError\n    ValidationError:\n      properties:\n        loc:\n          items:\n            anyOf:\n              - type: string\n              - type: integer\n          type: array\n          title: Location\n        msg:\n          type: string\n          title: Message\n        type:\n          type: string\n          title: Error Type\n      type: object\n      required:\n        - loc\n        - msg\n        - type\n      title: ValidationError\n  securitySchemes:\n    APIKeyHeader:\n      type: apiKey\n      in: header\n      name: X-API-KEY\n\n````\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 2.2,
+      "position": [
+        10976,
+        4176
+      ],
+      "id": "e2054c34-0796-446f-993f-2160e042e7d2",
+      "name": "composeAgent-first"
+    },
+    {
+      "parameters": {
+        "toolDescription": "AI Agent can use ffmpeg compose video",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "### 1. Compose Final Video (Precision Cutting & Safety Logic)\n\nYou will receive an array of `video_clips`. Each item contains:\n- `url`: The video file url.\n- `trim_duration`: The EXACT duration this clip should be visible (e.g., 0.7s, 11.1005s).\n- `generated_duration`: The actual length of the video file.\n\n**FFmpeg Command Construction Rules (Strict Filter Complex):**\n\n1. **Robust Filter Chain (Scale -> Pad -> Trim -> PTS)**:\n   For EACH input video `[i:v]`, you MUST construct a filter chain that ensures reliability. \n   **Do NOT use input `-t` flags.** Use `filter_complex` for everything to ensure synchronization.\n   \n   **The Filter Sequence for each clip:**\n   `[i:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,tpad=stop_mode=clone:stop_duration=1,trim=duration={trim_duration},setpts=PTS-STARTPTS[v{i}]`\n\n   **Why this chain?**\n   - **Scale/Pad**: Forces all clips to 1080x1920 (9:16) to prevent \"resolution mismatch\" errors during concat.\n   - **tpad (CRITICAL SAFETY)**: Adds 1 second of \"cloned last frame\" to the end of the video. \n     *Reason*: If `generated_duration` (11s) < `trim_duration` (11.1s), `tpad` fills the gap seamlessly so the video doesn't freeze or crash.\n   - **trim**: Cuts the video to the EXACT `trim_duration` needed for the beat.\n   - **setpts**: Resets timestamps so the concat runs smoothly.\n\n2. **Concatenation**: \n   Combine all processed streams `[v0][v1]...` using the `concat` filter.\n   Example: `[v0][v1][v2]concat=n=3:v=1:a=0[outv]`\n\n3. **Audio Mixing**: \n   - Add the audio input (usually the last input file).\n   - Map it to the output using `-map [outv] -map {audio_index}:a`.\n   - Ensure the `-shortest` flag is NOT used (we want the video visual flow to dictate length, even if audio is slightly different).\n\n**🚨 CRITICAL: OUTPUT PLACEHOLDER RULE**\n- You MUST use `{{out_1}}` as the output file in ffmpeg_command\n- NEVER use actual filenames like `output.mp4` or `video.mp4`\n- The API will REJECT commands without `{{out_1}}`\n\n**Example FFmpeg Command Logic:**\n*Scenario: Clip A (needs 0.7s), Clip B (needs 11.1s but file is only 11s), Audio at index 2.*\n\n**CORRECT body format:**\n```json\n{\n  \"ffmpeg_command\": \"-i {{in_1}} -i {{in_2}} -i {{in_3}} -filter_complex \\\"[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,tpad=stop_mode=clone:stop_duration=1,trim=duration=0.7,setpts=PTS-STARTPTS[v0];[1:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,tpad=stop_mode=clone:stop_duration=1,trim=duration=11.1,setpts=PTS-STARTPTS[v1];[v0][v1]concat=n=2:v=1:a=0[outv]\\\" -map \\\"[outv]\\\" -map 2:a -c:v libx264 -preset fast {{out_1}}\",\n  \"input_files\": {\"in_1\": \"https://clip1.mp4\", \"in_2\": \"https://clip2.mp4\", \"in_3\": \"https://audio.mp3\"},\n  \"output_files\": {\"out_1\": \"final_video.mp4\"},\n  \"max_command_run_seconds\": 300\n}\n```\n\n**Execution**:\n- Construct the command based on the inputs.\n- If FFmpeg fails, analyze the error (often resolution mismatch or filter syntax), fix it, and retry.\n\nthis is the api docs:\n# Run FFmpeg Command\n\n> Submit an FFmpeg command for processing with input and output file specifications.\n\n## OpenAPI\n\n````yaml POST /v1/run-ffmpeg-command\nopenapi: 3.1.0\ninfo:\n  title: FFmpeg Command API\n  description: API for running FFmpeg in a cloud environment\n  version: 1.0.0\nservers:\n  - url: https://api.rendi.dev\n    description: Rendi - FFmpeg API\nsecurity: []\npaths:\n  /v1/run-ffmpeg-command:\n    post:\n      tags:\n        - API\n        - FFmpeg Commands\n      summary: Run FFmpeg Command\n      description: >-\n        Submit an FFmpeg command for processing with input and output file\n        specifications.\n      operationId: run_ffmpeg_command_v1_run_ffmpeg_command_post\n      requestBody:\n        content:\n          application/json:\n            schema:\n              $ref: '#/components/schemas/FFmpegCommandRequest'\n        required: true\n      responses:\n        '200':\n          description: Successfully submitted FFmpeg command\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/RunCommandResponse'\n              example:\n                command_id: 123e4567-e89b-12d3-a456-426614174000\n        '401':\n          description: Invalid API key\n          content:\n            application/json:\n              example:\n                detail: Invalid authorization key\n        '403':\n          description: Account quota exceeded or plan does not support this command\n        '422':\n          description: Validation Error\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/HTTPValidationError'\n        '429':\n          description: Rate limit exceeded\n      security:\n        - APIKeyHeader: []\ncomponents:\n  schemas:\n    FFmpegCommandRequest:\n      properties:\n        input_files:\n          additionalProperties:\n            type: string\n          type: object\n          title: Input Files\n          description: |-\n            Dictionary mapping file aliases to their publicly accessible paths, \n                    file name should appear in the end of the url, keys are alphanumeric, with underscore allowed, must start with 'in_'. \n                    You can use public file urls, google drive, dropbox, rendi stored files, s3 stored files, etc. as long as they are publicly accessible.\n          examples:\n            - in_1: >-\n                https://storage.rendi.dev/sample/big_buck_bunny_720p_5sec_intro.mp4\n              in_2: >-\n                https://storage.rendi.dev/sample/big_buck_bunny_720p_5sec_outro.mp4\n        output_files:\n          additionalProperties:\n            type: string\n          type: object\n          title: Output Files\n          description: >-\n            Dictionary mapping file aliases to their desired output file names,\n            keys are alphanumeric, with underscore allowed, must start with\n            'out_'\n          examples:\n            - out_1: output_one.mp4\n              out_2: output_two.mp4\n        max_command_run_seconds:\n          type: number\n          exclusiveMinimum: 0\n          title: Max Command Run Seconds\n          description: >-\n            Maximum allowed runtime in seconds for a single FFmpeg command, the\n            default is 300 seconds\n          examples:\n            - 300\n        vcpu_count:\n          type: integer\n          exclusiveMinimum: 0\n          title: Vcpu Count\n          description: >-\n            Number of virtual CPUs to use for a single ffmpeg command, the\n            default is 8, up to your account's maximum. Multiple commands can\n            run in parallel as long as their total vCPU usage doesn't exceed\n            your quota.\n          examples:\n            - 8\n        ffmpeg_command:\n          type: string\n          title: Ffmpeg Command\n          description: >-\n            FFmpeg command string using {{alias}} placeholders for input and\n            output files.\n\n            Input file keys should start with 'in_' prefix, for example:\n            in_video1. Output file keys should start with 'out_' prefix, for\n            example: out_1.\n\n            If you're using an automation platform where curly brackets are used\n            special as characters (like make.com, zapier, or other) add\n            backslashes before the curly brackets, for example, replace {{in_1}}\n            with backslashes and brackets \\\\{\\\\{in_1\\\\}\\\\}.\n          examples:\n            - >-\n              -i {{in_1}} -i {{in_2}} -filter_complex\n              \"[0:v][1:v]hstack=inputs=2[v]\" -map [v] {{out_1}}\n      type: object\n      required:\n        - input_files\n        - output_files\n        - ffmpeg_command\n      title: FFmpegCommandRequest\n      description: >-\n        Request model for submitting a single FFmpeg command.\n\n\n        This model allows submitting an FFmpeg command with input and output\n        file specifications.\n\n        Input file aliases must start with 'in_' and direct to a publicly\n        accessible file, and\n\n        output file aliases must start with 'out_' and only name a file name to\n        be created.\n\n\n        If you're using an automation platform where curly brackets are used\n        special as characters\n\n        (like make.com, zapier, or other) add backslashes before the curly\n        brackets, for example, replace {{in_1}} with backslashes and brackets\n        \\\\{\\\\{in_1\\\\}\\\\}.\n      example:\n        ffmpeg_command: >-\n          -i {{in_1}} -vf\n          \"select='lte(t,60)*gt(trunc(t/10),trunc(prev_t/10))',setpts='PTS*0.025',scale=trunc(oh*a/2)*2:320:force_original_aspect_ratio=decrease,pad=trunc(oh*a/2)*2:320:-1:-1\"\n          -an -vsync vfr {{out_1}}\n        input_files:\n          in_1: https://storage.rendi.dev/sample/sample.avi\n        max_command_run_seconds: 300\n        output_files:\n          out_1: output1.gif\n        vcpu_count: 8\n    RunCommandResponse:\n      properties:\n        command_id:\n          type: string\n          format: uuid\n          title: Command Id\n          description: Unique identifier for the submitted command\n          examples:\n            - 123e4567-e89b-12d3-a456-426614174000\n      type: object\n      required:\n        - command_id\n      title: RunCommandResponse\n      description: >-\n        Response model for command submission.\n\n\n        Contains the unique identifier assigned to the submitted command that\n        can be used\n\n        to poll for status and retrieve results.\n    HTTPValidationError:\n      properties:\n        detail:\n          items:\n            $ref: '#/components/schemas/ValidationError'\n          type: array\n          title: Detail\n      type: object\n      title: HTTPValidationError\n    ValidationError:\n      properties:\n        loc:\n          items:\n            anyOf:\n              - type: string\n              - type: integer\n          type: array\n          title: Location\n        msg:\n          type: string\n          title: Message\n        type:\n          type: string\n          title: Error Type\n      type: object\n      required:\n        - loc\n        - msg\n        - type\n      title: ValidationError\n  securitySchemes:\n    APIKeyHeader:\n      type: apiKey\n      in: header\n      name: X-API-KEY\n\n````\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 2.2,
+      "position": [
+        11360,
+        4176
+      ],
+      "id": "40d87a87-ddeb-47e8-9589-59882f189a3a",
+      "name": "composeAgent-second"
+    },
+    {
+      "parameters": {
+        "description": "write info to sheet",
+        "workflowId": {
+          "__rl": true,
+          "value": "aHTCzx6sDy6ZAwog",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/aHTCzx6sDy6ZAwog",
+          "cachedResultName": "Agent clip video — tool_write2sheet"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "resultVideoUrl": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('resultVideoUrl', ``, 'string') }}",
+            "content": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('content', `descript this video`, 'string') }}",
+            "title": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('title', ``, 'string') }}",
+            "youtubeUrl": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('youtubeUrl', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "resultVideoUrl",
+              "displayName": "resultVideoUrl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "youtubeUrl",
+              "displayName": "youtubeUrl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        11616,
+        4176
+      ],
+      "id": "fd7d38ca-e13a-41a4-90a3-be1cabf62352",
+      "name": "Call 'tool_write2sheet'"
+    },
+    {
+      "parameters": {
+        "description": "Alternative image-to-video generation using Replicate API (Wan 2.5 i2v model). Use this as a backup or alternative to tool_batch_pic2video. Supports models: wan-video/wan-2.5-i2v (best quality), wan-video/wan-2.5-i2v-fast (faster). Duration: 5 or 10 seconds only. Resolution: 480p (default), 720p.",
+        "workflowId": {
+          "__rl": true,
+          "value": "s3hLWXYx3YSbj3ca",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/s3hLWXYx3YSbj3ca",
+          "cachedResultName": "Afflux — tool_batch_replicate_pic2video"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "images": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('images', ``, 'json') }}",
+            "model": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('model', `wan-video/wan-2.5-i2v`, 'string') }}",
+            "resolution": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('resolution', `480p`, 'string') }}"
+          },
+          "matchingColumns": [
+            "images"
+          ],
+          "schema": [
+            {
+              "id": "images",
+              "displayName": "images",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            },
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "resolution",
+              "displayName": "resolution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        11776,
+        4272
+      ],
+      "id": "90469b08-98bf-45fb-a4af-41f3f9d4c759",
+      "name": "Call 'tool_batch_replicate_pic2video'"
+    },
+    {
+      "parameters": {
+        "description": "First-Last-Frame video generation using WAN-FLF2V model. Creates videos by interpolating between keyframes extracted from original video. Use this for seamless visual consistency across video segments. Input: array of keyframes (each with frame_url, timestamp, prompt). The workflow automatically pairs consecutive frames: frame[i] becomes start_image, frame[i+1] becomes end_image. N keyframes produce N-1 video segments that chain seamlessly.",
+        "workflowId": {
+          "__rl": true,
+          "value": "IkJmT6JkVLfBkMge",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/IkJmT6JkVLfBkMge",
+          "cachedResultName": "Afflux — tool_batch_flf2v_pic2video"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "keyframes": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('keyframes', `Array of keyframe objects with frame_url, timestamp, and prompt`, 'json') }}",
+            "resolution": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('resolution', `480p`, 'string') }}",
+            "aspect_ratio": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('aspect_ratio', `auto`, 'string') }}"
+          },
+          "matchingColumns": [
+            "keyframes"
+          ],
+          "schema": [
+            {
+              "id": "keyframes",
+              "displayName": "keyframes",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            },
+            {
+              "id": "resolution",
+              "displayName": "resolution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "aspect_ratio",
+              "displayName": "aspect_ratio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        11904,
+        4176
+      ],
+      "id": "b5dcd544-38c2-4b76-ad54-8b8e53f48073",
+      "name": "Call 'tool_batch_flf2v_pic2video'"
+    },
+    {
+      "parameters": {
+        "description": "Generate video using Kling AI Motion Control. Use this when you have a START IMAGE (keyframes) and a REFERENCE VIDEO (reference_video_url) and you want the character in the image to MIMIC the motion of the reference video. Input: keyframes (array), reference_video_url (string).",
+        "workflowId": {
+          "__rl": true,
+          "value": "OiDtrKe0ttfP3PD4",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/OiDtrKe0ttfP3PD4",
+          "cachedResultName": "Afflux — tool_batch_kling_motion_video"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "keyframes": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('keyframes', `Array of keyframe objects with frame_url`, 'json') }}",
+            "reference_video_url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('reference_video_url', `The URL of the original video to use as motion reference`, 'string') }}",
+            "resolution": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('resolution', `1080p`, 'string') }}",
+            "aspect_ratio": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('aspect_ratio', `16:9`, 'string') }}"
+          },
+          "matchingColumns": [
+            "keyframes",
+            "reference_video_url"
+          ],
+          "schema": [
+            {
+              "id": "keyframes",
+              "displayName": "keyframes",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            },
+            {
+              "id": "reference_video_url",
+              "displayName": "reference_video_url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "resolution",
+              "displayName": "resolution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "aspect_ratio",
+              "displayName": "aspect_ratio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        12032,
+        4176
+      ],
+      "id": "d9b501bf-59a9-44c8-9c0e-a4e97ad45c51",
+      "name": "Call 'tool_batch_kling_motion_video'"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a Viral Video Replication Orchestrator specialized in creating copyright-safe viral video recreations.\n\n## 🎯 CORE MISSION\nRecreate viral videos by:\n1. **SWAPPING the person** - Replace all human characters with similar looking human characters, replace non-human looking characters with similar looking non-human characters.\n2. **PRESERVING the scene** - Maintain the original background, lighting, and camera angle to ensure high-quality motion transfer.\n3. **RETAINING the original audio** - Keep the original soundtrack for emotional impact.\n\nThis creates unique, copyright-safe content that captures the viral essence without infringement.\n\n---\n\n## 🚨 CRITICAL RULES - READ FIRST\n**NEVER call tool_batch_gemini_edit_image or tool_batch_pic2video multiple times!**\n- These are BATCH tools - you MUST collect ALL data into ONE array, then call ONCE.\n- Before triggering any tool call, stream a short response to the user FIRST.\n- Always use exact startTime and duration values from segments[] (floating seconds). Do NOT round.\n\n---\n\n## 📋 WORKFLOW\n\n### STEP 1: ANALYZE\nCall tool_cacheAndAnalyzeVideo with youtube_url\n→ Returns: segments[] (with frame images), audio_url (ORIGINAL soundtrack to retain)\n\n### STEP 2: MAINTAIN ORIGINAL STYLE & THEME\nYour goal is to make the generated video basically the same as the original in style and theme, but with different look human characters or non-human looking characters.\n- **Do NOT** change the background or setting. Kling Motion Control works best when the image background matches the video reference.\n- **Goal**: Create a \"parallel universe\" version of the video with different identities but the exact same environment.\n\n### STEP 3: GENERATE ANCHOR & BATCH EDIT (CONSISTENCY STRATEGY)\n\n**3A. Generate Anchor Image (The Reference)**\nWe need ONE consistent character reference first.\n1. Select the **first frame** (Segment 0).\n2. Call `tool_batch_gemini_edit_image` with an array of **ONE** item (Segment 0 only).\n3. **Prompt:** \"Create the MAIN CHARACTER: [Detailed Description]. High quality, clear face.\"\n\n**3B. Analyze Output (The Lock)**\n1. Get the URL of the generated image from 3A.\n2. Call `tool_vision_analyze_image` with this URL.\n3. Prompt: \"Describe this character's face, hair, and outfit in extreme detail.\" -> Returns `[ANCHOR_DESCRIPTION]`.\n\n**3C. Batch Generate Rest (The Clone)**\n1. Construct the array for ALL remaining segments (Segment 1 to End).\n2. **Update Prompts:** Append `[ANCHOR_DESCRIPTION]` to every prompt.\n   *   Template in Think: \"Replace subject with [Original Request]. The character MUST look like: [ANCHOR_DESCRIPTION]. **Maintain background: [Original Scene Description]**.\"\n3. Call `tool_batch_gemini_edit_image` with this new array.\n\n**3D. Merge**\nCombine Anchor (3A) + Batch (3C) results for video generation.\n\n**IMAGE EDITING PROMPT TEMPLATE (For 3A and 3C):**\n```\nTransform this image: Replace the subject [DESCRIPTION OF ORIGINAL SUBJECT] with a similar looking but distinct [NEW SUBJECT]. [IF 3C ADD: The new subject must match this description exactly: ANCHOR_DESCRIPTION]. Maintain the EXACT same composition, lighting mood, camera angle, and background elements. Do NOT change the setting.\n```\n\n**Call tool_batch_gemini_edit_image with:**\n```json\n{\n  \"images\": [\n    {\"fileUrl\": \"seg0_url\", \"prompt\": \"...\", \"segment_index\": 0}\n  ]\n}\n```\n\n### STEP 4: GENERATE VIDEOS (STRICT: KLING MOTION ONLY)\n\n**You MUST use `tool_batch_kling_motion_video` for ALL video generation.**\nWe are enforcing a specific aesthetic where the character mimics the motion of the original source video.\n\n**Inputs Required:**\n1. `keyframes`: The character images you have prepared (Input Image).\n2. `reference_video_url`: The ORIGINAL video URL (Motion Reference).\n\n**Do NOT use flf2v or standard pic2video tools.**\n\n**Call tool_batch_kling_motion_video with:**\n```json\n{\n  \"keyframes\": [\n    ... // your keyframes array\n  ],\n  \"reference_video_url\": \"ORIGINAL_VIDEO_URL_FROM_ANALYSIS\",\n  \"resolution\": \"1080p\",\n  \"aspect_ratio\": \"16:9\"\n}\n```\n\n**Why?**\nWe want the generated character to \"act out\" the exact scene from the original video using Kling 2.5's motion transfer. Best results happen when the generated image background aligns with the reference video background.\n\n### STEP 5: COMPOSE WITH ORIGINAL AUDIO\nCall composeAgent-first with:\n- video_clips array (new character videos)\n- audio_url (ORIGINAL soundtrack from Step 1 - this is KEY for virality)\n\nIf composeAgent-first fails, try composeAgent-second.\n\n### STEP 6: OUTPUT\nShow final URL and explain the transformation.\n\n### STEP 7: LOG RESULT\nCall tool_write2sheet with result.\n\n---\n\n## ⚠️ ABSOLUTE RULES\n\n1. **ONE CALL for batch edit** - Never loop\n2. **ONE CALL for batch video** - Never loop\n3. **Think before batch calls** - Plan the complete array\n4. **ALWAYS retain original audio** - Use audio_url from analysis\n5. **Consistent character across ALL segments** - Same character in every frame\n6. **Same background across ALL segments** - Do not alter the setting\n\nIf you're about to call a batch tool more than once, STOP and rebuild.",
+          "maxIterations": 60,
+          "enableStreaming": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        10880,
+        3952
+      ],
+      "id": "74f46eb9-2e6e-4d1d-89f0-fc989bd1939a",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        9936,
+        4176
+      ],
+      "id": "abe10329-50d9-41fd-8f01-dc3ec0bba565",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "KKwacwGphFisUiYN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Analyze an image using Gemini Vision to get a detailed physical description. Use this to maintain character consistency. Input: image_url (string). Output: description (string).",
+        "workflowId": {
+          "__rl": true,
+          "value": "4IUWLYVyYdWp27KH",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/4IUWLYVyYdWp27KH",
+          "cachedResultName": "Afflux — tool_vision_analyze_image"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "image_url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('image_url', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "image_url"
+          ],
+          "schema": [
+            {
+              "id": "image_url",
+              "displayName": "image_url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        10400,
+        4400
+      ],
+      "id": "tool-vision-analyze-node",
+      "name": "Call 'tool_vision_analyze_image'"
+    },
+    {
+      "parameters": {
+        "description": "this is a tool to generate a google Text-to-Speech audio by giving text,voiceName and voicePrompt(say it fast and high-pitched tone)\noutput example:\n[\n  {\n    \"audioUrl\": \"https://amz-bucket-oktale.s3.us-east-2.amazonaws.com/n8n%2F2025-11-30T23%3A45%3A22.932-08%3A00.wav\",\n    \"duration\": \"13\"\n  }\n]\n\nhere are the info\nvoiceName\tGender\tTempo\nAchernar\tFemale\tSoft\nAchird\tMale\tFriendly\nAlgenib\tMale\tGravelly\nAlgieba\tMale\tSmooth\nAlnilam\tMale\tFirm\nAoede\tFemale\tBreezy\nAutonoe\tFemale\tBright\nCallirrhoe\tFemale\tEasy-going\nCharon\tMale\tInformative\nDespina\tFemale\tSmooth\nEnceladus\tMale\tBreathy\nErinome\tFemale\tClear\nFenrir\tMale\tExcitable\nGacrux\tFemale\tMature\nIapetus\tMale\tClear\nKore\tFemale\tFirm\nLaomedeia\tFemale\tUpbeat\nLeda\tFemale\tYouthful\nOrus\tMale\tFirm\nPulcherrima\tFemale\tForward\nPuck\tMale\tUpbeat\nRasalgethi\tMale\tInformative\nSadachbia\tMale\tLively\nSadaltager\tMale\tKnowledgeable\nSchedar\tMale\tEven\nSulafat\tFemale\tWarm\nUmbriel\tMale\tEasy-going\nVindemiatrix\tFemale\tGentle\nZephyr\tFemale\tBright\nZubenelgenubi\tMale\tCasual\n\n",
+        "workflowId": {
+          "__rl": true,
+          "value": "fAWR8LRn55Y1p5VS",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/fAWR8LRn55Y1p5VS",
+          "cachedResultName": "Afflux — tool_geminiTTs"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text', ``, 'string') }}",
+            "voiceName": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('voiceName', ``, 'string') }}",
+            "voicePrompt": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('voicePrompt', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "text",
+              "displayName": "text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "voiceName",
+              "displayName": "voiceName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "voicePrompt",
+              "displayName": "voicePrompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        10336,
+        4176
+      ],
+      "id": "bc62b534-a363-4ebf-ac94-f30011e142b4",
+      "name": "Call 'tool_geminiTTs'",
+      "rewireOutputLogTo": "ai_tool"
+    },
+    {
+      "parameters": {
+        "description": "this is a tool can run ffmpeg in cloud,Run FFmpeg commands in cloud.\nInput body format:\n{\n  \"ffmpeg_command\": \"-i {{in_1}} -vf ... {{out_1}}\",\n  \"input_files\": {\"in_1\": \"https://...\"},\n  \"output_files\": {\"out_1\": \"output.mp4\"},\n  \"max_command_run_seconds\": 300\n}\nUse {{in_X}} for inputs, {{out_X}} for outputs.",
+        "workflowId": {
+          "__rl": true,
+          "value": "zmFFZzYXZNMjeQRn",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/zmFFZzYXZNMjeQRn",
+          "cachedResultName": "Afflux — tool_rendi_ffmpeg"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "body": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('body', ``, 'json') }}"
+          },
+          "matchingColumns": [
+            "body"
+          ],
+          "schema": [
+            {
+              "id": "body",
+              "displayName": "body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        11632,
+        4400
+      ],
+      "id": "5dc7719d-f36a-40ac-8ada-b9b86ac3df27",
+      "name": "Call 'tool_rendi_ffmpeg'2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory2": {
+      "ai_memory": [
+        [
+          {
+            "node": "composeAgent-second",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gpt5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "composeAgent-first",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_cacheAndAnalyzeVideo'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gpt": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "composeAgent-second",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_batch_pic2video'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_batch_gemini_edit_image'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_rendi_ffmpeg'": {
+      "ai_tool": [
+        [
+          {
+            "node": "composeAgent-first",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "composeAgent-first",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "composeAgent-first": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "composeAgent-second": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_write2sheet'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_batch_replicate_pic2video'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_batch_flf2v_pic2video'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_batch_kling_motion_video'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "When chat message received",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_geminiTTs'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_vision_analyze_image'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'tool_rendi_ffmpeg'2": {
+      "ai_tool": [
+        [
+          {
+            "node": "composeAgent-second",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "57ce9ba8-9485-4d43-9994-9e76b7159e19",
+  "meta": {
+    "instanceId": "5d73e47fbd672d304f06524b896d7eb8ee2688cc66dabdc7a4d0908c88a41b5f"
+  },
+  "id": "K8zqcffIMPVbkJ6L",
+  "tags": [
+    {
+      "updatedAt": "2025-10-28T15:52:10.695Z",
+      "createdAt": "2025-10-28T15:52:10.695Z",
+      "id": "JAFc18nY0vBrprUz",
+      "name": "Fork"
+    },
+    {
+      "updatedAt": "2025-10-20T01:45:55.425Z",
+      "createdAt": "2025-10-20T01:45:55.425Z",
+      "id": "alRRrlEin0JnFTyt",
+      "name": "Dave"
+    }
+  ]
+}

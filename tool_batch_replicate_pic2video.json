@@ -1,0 +1,598 @@
+{
+  "name": "tool_batch_replicate_pic2video",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "images",
+              "type": "array"
+            },
+            {
+              "name": "model",
+              "type": "string"
+            },
+            {
+              "name": "resolution",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -304,
+        -80
+      ],
+      "id": "replicate-trigger",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Setup configuration\n// Model options:\n// - wan-video/wan-2.5-i2v (best quality, $0.05-0.15/sec based on resolution)\n// - wan-video/wan-2.5-i2v-fast (faster, slightly cheaper)\n// - stability-ai/stable-video-diffusion (SVD, ~$0.07/video)\n\nconst input = $('When Executed by Another Workflow').first().json;\n\n// Default to Wan 2.5 i2v if no model specified\nconst model = input.model || 'wan-video/wan-2.5-i2v';\nconst resolution = input.resolution || '480p'; // 480p is cheapest\n\n// Model-specific API versions (update these if needed)\nconst modelVersions = {\n  'wan-video/wan-2.5-i2v': 'wan-video/wan-2.5-i2v',\n  'wan-video/wan-2.5-i2v-fast': 'wan-video/wan-2.5-i2v-fast',\n  'stability-ai/stable-video-diffusion': 'stability-ai/stable-video-diffusion:3f0457e4619daac51203dedb472816fd4af51f3149fa7a9e0b5ffcf1b8172438'\n};\n\nreturn {\n  json: {\n    model: model,\n    modelVersion: modelVersions[model] || model,\n    resolution: resolution,\n    // IMPORTANT: Replace with your Replicate API token\n    ReplicateAPIToken: 'r8_YOUR_REPLICATE_API_TOKEN_HERE'\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        -80
+      ],
+      "id": "setup-config",
+      "name": "Setup Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split images array into individual items\nconst images = $('When Executed by Another Workflow').first().json.images;\nconst config = $('Setup Config').first().json;\n\nreturn images.map((img, index) => {\n  let duration = img.duration;\n  \n  // Wan 2.5 only supports 5 or 10 seconds\n  if (typeof duration !== 'number') duration = 5;\n  duration = duration <= 5 ? 5 : 10;\n  \n  return {\n    json: {\n      pictureUrl: img.pictureUrl,\n      prompt: img.prompt || 'cinematic motion, smooth animation',\n      duration: duration,\n      resolution: config.resolution,\n      segment_index: img.segment_index ?? index,\n      model: config.model,\n      modelVersion: config.modelVersion\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        -80
+      ],
+      "id": "split-images",
+      "name": "Split Images Array"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.replicate.com/v1/predictions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Setup Config').first().json.ReplicateAPIToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "wait"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $json.modelVersion }}\",\n  \"input\": {\n    \"image\": \"{{ $json.pictureUrl }}\",\n    \"prompt\": {{ JSON.stringify($json.prompt) }},\n    \"duration\": {{ $json.duration }},\n    \"resolution\": \"{{ $json.resolution }}\",\n    \"enable_prompt_expansion\": true\n  }\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        384,
+        -80
+      ],
+      "id": "submit-replicate",
+      "name": "Submit to Replicate",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check submission results and prepare for polling\nconst allItems = $input.all();\nconst originalInputs = $('Split Images Array').all();\n\nreturn allItems.map((item, index) => {\n  const original = originalInputs[index]?.json || {};\n  const response = item.json;\n  \n  // Check if we got an immediate result (Prefer: wait header)\n  if (response.status === 'succeeded' && response.output) {\n    return {\n      json: {\n        status: 'COMPLETED',\n        segment_index: original.segment_index,\n        pictureUrl: original.pictureUrl,\n        duration: original.duration,\n        videoUrl: Array.isArray(response.output) ? response.output[0] : response.output,\n        source: 'replicate'\n      }\n    };\n  }\n  \n  // Check for errors\n  if (response.error || response.status === 'failed') {\n    return {\n      json: {\n        status: 'FAILED',\n        segment_index: original.segment_index,\n        pictureUrl: original.pictureUrl,\n        duration: original.duration,\n        errorMsg: response.error || 'Replicate submission failed',\n        source: 'replicate'\n      }\n    };\n  }\n  \n  // Need to poll for result\n  return {\n    json: {\n      status: 'PENDING',\n      prediction_id: response.id,\n      get_url: response.urls?.get || `https://api.replicate.com/v1/predictions/${response.id}`,\n      segment_index: original.segment_index,\n      pictureUrl: original.pictureUrl,\n      duration: original.duration,\n      source: 'replicate'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -80
+      ],
+      "id": "check-submit-results",
+      "name": "Check Submit Results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "needs-polling",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "PENDING",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        864,
+        -80
+      ],
+      "id": "needs-polling",
+      "name": "Needs Polling?"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1104,
+        -160
+      ],
+      "id": "wait-initial",
+      "name": "Wait 30s Initial",
+      "webhookId": "replicate-wait-001"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.get_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Setup Config').first().json.ReplicateAPIToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        -160
+      ],
+      "id": "poll-replicate",
+      "name": "Poll Replicate Status",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Update status after polling\nconst allItems = $input.all();\nconst pollInputs = $('Needs Polling?').all().filter(i => i.json.status === 'PENDING');\n\nreturn allItems.map((item, index) => {\n  const original = pollInputs[index]?.json || {};\n  const response = item.json;\n  \n  if (response.status === 'succeeded') {\n    return {\n      json: {\n        status: 'COMPLETED',\n        segment_index: original.segment_index,\n        pictureUrl: original.pictureUrl,\n        duration: original.duration,\n        videoUrl: Array.isArray(response.output) ? response.output[0] : response.output,\n        source: 'replicate'\n      }\n    };\n  }\n  \n  if (response.status === 'failed' || response.status === 'canceled') {\n    return {\n      json: {\n        status: 'FAILED',\n        segment_index: original.segment_index,\n        pictureUrl: original.pictureUrl,\n        duration: original.duration,\n        errorMsg: response.error || 'Generation failed',\n        source: 'replicate'\n      }\n    };\n  }\n  \n  // Still processing\n  return {\n    json: {\n      status: 'PENDING',\n      prediction_id: original.prediction_id,\n      get_url: original.get_url,\n      segment_index: original.segment_index,\n      pictureUrl: original.pictureUrl,\n      duration: original.duration,\n      source: 'replicate'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        -160
+      ],
+      "id": "update-poll-status",
+      "name": "Update Poll Status"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "tasks",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1824,
+        -160
+      ],
+      "id": "aggregate-poll",
+      "name": "Aggregate Poll Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check completion status\nconst tasks = $input.first().json.tasks;\nconst completed = tasks.filter(t => t.status === 'COMPLETED');\nconst failed = tasks.filter(t => t.status === 'FAILED');\nconst pending = tasks.filter(t => t.status === 'PENDING');\n\nreturn {\n  json: {\n    tasks: tasks,\n    allDone: pending.length === 0,\n    completedCount: completed.length,\n    failedCount: failed.length,\n    pendingCount: pending.length,\n    totalCount: tasks.length\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        -160
+      ],
+      "id": "check-completion",
+      "name": "Check All Completed"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "all-done",
+              "leftValue": "={{ $json.allDone }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2304,
+        -160
+      ],
+      "id": "all-done-check",
+      "name": "All Done?"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2304,
+        64
+      ],
+      "id": "wait-retry",
+      "name": "Wait 15s Retry",
+      "webhookId": "replicate-wait-retry-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split pending tasks for retry\nconst tasks = $input.first().json.tasks;\nconst pending = tasks.filter(t => t.status === 'PENDING');\nreturn pending.map(task => ({ json: task }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        64
+      ],
+      "id": "split-for-retry",
+      "name": "Split Pending for Retry"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract completed and failed results\nconst tasks = $input.first().json.tasks;\nreturn tasks.map(task => ({ json: task }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        -240
+      ],
+      "id": "split-final-results",
+      "name": "Split Final Results"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2784,
+        -80
+      ],
+      "id": "merge-all-results",
+      "name": "Merge All Results"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "videos",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        3024,
+        -80
+      ],
+      "id": "final-aggregate",
+      "name": "Final Aggregate"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format final output - same structure as Fal workflow\nconst videos = $input.first().json.videos || [];\n\nconsole.log('=== Replicate Format Final Output ===');\nconsole.log('收到总计', videos.length, '个结果');\n\n// Filter only successful results with videoUrl\nconst successful = videos.filter(v => v.status === 'COMPLETED' && v.videoUrl);\nconst failed = videos.filter(v => v.status === 'FAILED');\n\nconsole.log('成功:', successful.length, '失败:', failed.length);\n\n// Sort by segment_index\nsuccessful.sort((a, b) => {\n  const aIdx = typeof a.segment_index === 'number' ? a.segment_index : 99999;\n  const bIdx = typeof b.segment_index === 'number' ? b.segment_index : 99999;\n  return aIdx - bIdx;\n});\n\nconsole.log('最终输出', successful.length, '个结果');\n\nreturn {\n  json: {\n    success: true,\n    videos: successful,\n    count: successful.length,\n    failedCount: failed.length\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3264,
+        -80
+      ],
+      "id": "format-output",
+      "name": "Format Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Items that completed immediately (no polling needed)\nconst items = $input.all();\nreturn items.map(item => ({ json: item.json }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        0
+      ],
+      "id": "immediate-results",
+      "name": "Immediate Results"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "images": [
+            {
+              "pictureUrl": "https://video-analyze-perframe.s3.us-east-2.amazonaws.com/Vnpv0OWy2Zo/Vnpv0OWy2Zo_000_at_0_00s.jpg",
+              "prompt": "A woman dancing elegantly, smooth cinematic motion",
+              "duration": 5,
+              "segment_index": 0
+            },
+            {
+              "pictureUrl": "https://video-analyze-perframe.s3.us-east-2.amazonaws.com/5313ip2watA/5313ip2watA_002_at_4_37s.jpg",
+              "prompt": "Camera slowly zooms in, gentle movement",
+              "duration": 5,
+              "segment_index": 1
+            }
+          ],
+          "model": "wan-video/wan-2.5-i2v",
+          "resolution": "480p"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Setup Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Config": {
+      "main": [
+        [
+          {
+            "node": "Split Images Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Images Array": {
+      "main": [
+        [
+          {
+            "node": "Submit to Replicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit to Replicate": {
+      "main": [
+        [
+          {
+            "node": "Check Submit Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Submit Results": {
+      "main": [
+        [
+          {
+            "node": "Needs Polling?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Polling?": {
+      "main": [
+        [
+          {
+            "node": "Wait 30s Initial",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Immediate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30s Initial": {
+      "main": [
+        [
+          {
+            "node": "Poll Replicate Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Replicate Status": {
+      "main": [
+        [
+          {
+            "node": "Update Poll Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Poll Status": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Poll Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Poll Results": {
+      "main": [
+        [
+          {
+            "node": "Check All Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check All Completed": {
+      "main": [
+        [
+          {
+            "node": "All Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All Done?": {
+      "main": [
+        [
+          {
+            "node": "Split Final Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 15s Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15s Retry": {
+      "main": [
+        [
+          {
+            "node": "Split Pending for Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Pending for Retry": {
+      "main": [
+        [
+          {
+            "node": "Poll Replicate Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Final Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Immediate Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge All Results": {
+      "main": [
+        [
+          {
+            "node": "Final Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "replicate-v1-001",
+  "meta": {
+    "instanceId": "5d73e47fbd672d304f06524b896d7eb8ee2688cc66dabdc7a4d0908c88a41b5f"
+  },
+  "id": "ReplicatePic2Video001",
+  "tags": []
+}

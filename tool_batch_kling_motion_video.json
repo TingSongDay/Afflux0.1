@@ -1,0 +1,672 @@
+{
+    "name": "tool_batch_kling_motion_video",
+    "nodes": [
+        {
+            "parameters": {
+                "workflowInputs": {
+                    "values": [
+                        {
+                            "name": "keyframes",
+                            "type": "array"
+                        },
+                        {
+                            "name": "resolution",
+                            "type": "string"
+                        },
+                        {
+                            "name": "aspect_ratio",
+                            "type": "string"
+                        },
+                        {
+                            "name": "reference_video_url",
+                            "type": "string"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.executeWorkflowTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                -304,
+                -80
+            ],
+            "id": "kling-trigger",
+            "name": "When Executed by Another Workflow"
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "api-key",
+                            "name": "FalAPIKey",
+                            "type": "string",
+                            "value": "314691ea-f16e-4b50-834a-51b9b235134e:5c1875d90a9d57eb2791b1acec81d311"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                -112,
+                -80
+            ],
+            "id": "kling-setup-key",
+            "name": "Setup API Key"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Pair consecutive keyframes into segments for Kling Motion Control\n// N keyframes \u2192 N-1 video segments\n\nconst input = $('When Executed by Another Workflow').first().json;\nconst keyframes = input.keyframes || [];\nconst resolution = input.resolution || '1080p';\nconst aspect_ratio = input.aspect_ratio || '16:9';\nconst reference_video_url = input.reference_video_url || '';\n\nconst MIN_KEYFRAMES = 1;\n\nif (keyframes.length < MIN_KEYFRAMES) {\n  throw new Error(`Insufficient keyframes: Got ${keyframes.length}, need at least ${MIN_KEYFRAMES}.`);\n}\n\nif (!reference_video_url) {\n    // Log warning or throw error depending on strictness. The prompt implies it's required for this tool.\n    throw new Error('Missing required input: reference_video_url');\n}\n\nconst segments = [];\n// Kling Motion Control typically takes one image + one video.\n// If we have multiple keyframes, do we generate a video for EACH keyframe using the SAME reference video? \n// Or is the reference video expected to match the sequence?\n// Assuming we treat each keyframe as a start image for a segment driven by the reference video.\n\n// If strict pairing (Start->End) is desired, loop length-1. \n// If just generating strictly from Start Image + Video, loop length.\n// Current logic: Create segments. \n\nfor (let i = 0; i < keyframes.length; i++) {\n  const startFrame = keyframes[i];\n  // For the last frame, do we generate? \n  // If this is a chain, maybe. \n  // Let's stick to the previous pattern: N keyframes -> N-1 segments if we are interpolating.\n  // BUT, motion control with a reference video might be \"Animate this specific image using this video\".\n  // If we have 3 keyframes, maybe we want 3 animations?\n  // Let's assume standard interpolation logic for now: i < keyframes.length - 1\n  if (i >= keyframes.length - 1) continue;\n\n  const endFrame = keyframes[i + 1];\n  \n  segments.push({\n    segment_index: i,\n    start_image_url: startFrame.frame_url,\n    end_image_url: endFrame.frame_url,\n    reference_video_url: reference_video_url,\n    prompt: startFrame.prompt || 'High quality, cinematic motion',\n    resolution: resolution,\n    aspect_ratio: aspect_ratio,\n    start_timestamp: startFrame.timestamp,\n    end_timestamp: endFrame.timestamp\n  });\n}\n\nconsole.log(`Paired ${keyframes.length} keyframes into ${segments.length} video segments for Kling`);\n\nreturn segments.map(seg => ({ json: seg }));"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                96,
+                -80
+            ],
+            "id": "kling-pair-frames",
+            "name": "Pair Keyframes"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://queue.fal.run/fal-ai/kling-video/v2.6/standard/motion-control",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"prompt\": {{ JSON.stringify($json.prompt) }},\n  \"image_url\": \"{{ $json.start_image_url }}\",\n  \"video_url\": \"{{ $json.reference_video_url }}\",\n  \"character_orientation\": \"video\",\n  \"duration\": \"5\",\n  \"aspect_ratio\": \"{{ $json.aspect_ratio }}\",\n  \"cfg_scale\": 0.5\n}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                336,
+                -80
+            ],
+            "id": "kling-submit",
+            "name": "Submit to Kling",
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 5000
+        },
+        {
+            "parameters": {
+                "jsCode": "// Check Kling submission results\nconst allItems = $input.all();\nconst originalInputs = $('Pair Keyframes').all();\n\nreturn allItems.map((item, index) => {\n  const original = originalInputs[index]?.json || {};\n  const hasError = item.json.error || item.json.detail || !item.json.request_id;\n  const errorMsg = item.json.error?.message || item.json.detail || item.json.message || '';\n  \n  if (hasError) {\n    return {\n      json: {\n        status: 'error',\n        segment_index: original.segment_index,\n        start_image_url: original.start_image_url,\n        end_image_url: original.end_image_url,\n        prompt: original.prompt,\n        start_timestamp: original.start_timestamp,\n        end_timestamp: original.end_timestamp,\n        errorMsg: errorMsg || 'Kling submission failed'\n      }\n    };\n  } else {\n    return {\n      json: {\n        status: 'submitted',\n        request_id: item.json.request_id,\n        status_url: item.json.status_url,\n        response_url: item.json.response_url,\n        segment_index: original.segment_index,\n        start_image_url: original.start_image_url,\n        end_image_url: original.end_image_url,\n        prompt: original.prompt,\n        start_timestamp: original.start_timestamp,\n        end_timestamp: original.end_timestamp\n      }\n    };\n  }\n});"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                576,
+                -80
+            ],
+            "id": "kling-check-submit",
+            "name": "Check Submit Results"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 2
+                    },
+                    "conditions": [
+                        {
+                            "id": "is-submitted",
+                            "leftValue": "={{ $json.status }}",
+                            "rightValue": "submitted",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                800,
+                -80
+            ],
+            "id": "kling-route-result",
+            "name": "Submission Success?"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Prepare successful submissions for polling\nconst items = $input.all();\n\nreturn items.map(item => ({\n  json: {\n    request_id: item.json.request_id,\n    status_url: item.json.status_url,\n    response_url: item.json.response_url,\n    segment_index: item.json.segment_index,\n    start_image_url: item.json.start_image_url,\n    end_image_url: item.json.end_image_url,\n    start_timestamp: item.json.start_timestamp,\n    end_timestamp: item.json.end_timestamp,\n    status: 'IN_QUEUE',\n    source: 'kling-video'\n  }\n}));"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1040,
+                -160
+            ],
+            "id": "kling-prep-poll",
+            "name": "Prep for Poll"
+        },
+        {
+            "parameters": {
+                "amount": 60
+            },
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1.1,
+            "position": [
+                1280,
+                -160
+            ],
+            "id": "kling-wait-initial",
+            "name": "Wait 60s Initial",
+            "webhookId": "kling-wait-001"
+        },
+        {
+            "parameters": {
+                "url": "={{ $json.status_url }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1520,
+                -160
+            ],
+            "id": "kling-poll-status",
+            "name": "Poll Status",
+            "retryOnFail": true,
+            "maxTries": 3,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Update polling status\nconst allItems = $input.all();\nconst pollInputs = $('Prep for Poll').all();\n\nreturn allItems.map((item, index) => {\n  const original = pollInputs[index]?.json || {};\n  const status = item.json.status || 'UNKNOWN';\n  const errorMsg = item.json.error?.message || item.json.detail || '';\n  \n  return {\n    json: {\n      request_id: original.request_id,\n      status_url: original.status_url,\n      response_url: original.response_url,\n      segment_index: original.segment_index,\n      start_image_url: original.start_image_url,\n      end_image_url: original.end_image_url,\n      start_timestamp: original.start_timestamp,\n      end_timestamp: original.end_timestamp,\n      status: status,\n      source: 'kling-video',\n      errorMsg: errorMsg\n    }\n  };\n});"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1760,
+                -160
+            ],
+            "id": "kling-update-status",
+            "name": "Update Status"
+        },
+        {
+            "parameters": {
+                "aggregate": "aggregateAllItemData",
+                "destinationFieldName": "tasks",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.aggregate",
+            "typeVersion": 1,
+            "position": [
+                2000,
+                -160
+            ],
+            "id": "kling-aggregate-poll",
+            "name": "Aggregate Poll Results"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Check task completion status\nconst tasks = $input.first().json.tasks;\nconst completed = tasks.filter(t => t.status === 'COMPLETED');\nconst failed = tasks.filter(t => t.status === 'FAILED');\nconst pending = tasks.filter(t => t.status !== 'COMPLETED' && t.status !== 'FAILED');\n\nconst allDone = pending.length === 0;\n\nreturn {\n  json: {\n    tasks: tasks,\n    allDone: allDone,\n    completedCount: completed.length,\n    failedCount: failed.length,\n    pendingCount: pending.length,\n    totalCount: tasks.length\n  }\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                2240,
+                -160
+            ],
+            "id": "kling-check-completion",
+            "name": "Check Completion"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 2
+                    },
+                    "conditions": [
+                        {
+                            "id": "all-done",
+                            "leftValue": "={{ $json.allDone }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "name": "filter.operator.true"
+                            }
+                        }
+                    ],
+                    "combinator": "or"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                2480,
+                -160
+            ],
+            "id": "kling-all-done",
+            "name": "All Done?"
+        },
+        {
+            "parameters": {
+                "amount": 20
+            },
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1.1,
+            "position": [
+                2480,
+                64
+            ],
+            "id": "kling-wait-retry",
+            "name": "Wait 20s Retry",
+            "webhookId": "kling-wait-retry-001"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Split pending tasks for retry\nconst tasks = $input.first().json.tasks;\nconst pending = tasks.filter(t => t.status !== 'COMPLETED' && t.status !== 'FAILED');\nreturn pending.map(task => ({ json: task }));"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                2704,
+                64
+            ],
+            "id": "kling-split-retry",
+            "name": "Split Pending for Retry"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Split completed tasks to get results\nconst tasks = $input.first().json.tasks;\nconst completed = tasks.filter(t => t.status === 'COMPLETED');\nreturn completed.map(task => ({ json: task }));"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                2720,
+                -240
+            ],
+            "id": "kling-split-completed",
+            "name": "Split Completed"
+        },
+        {
+            "parameters": {
+                "url": "={{ $json.response_url }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                2960,
+                -240
+            ],
+            "id": "kling-get-results",
+            "name": "Get Results",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 5000
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extract video URLs from Kling results\nconst allItems = $input.all();\nconst resultInputs = $('Split Completed').all();\n\nreturn allItems.map((item, index) => {\n  let videoUrl = '';\n  if (item.json.video && item.json.video.url) {\n    videoUrl = item.json.video.url;\n  }\n  \n  const original = resultInputs[index]?.json || {};\n  \n  return {\n    json: {\n      segment_index: original.segment_index,\n      start_image_url: original.start_image_url,\n      end_image_url: original.end_image_url,\n      start_timestamp: original.start_timestamp,\n      end_timestamp: original.end_timestamp,\n      videoUrl: videoUrl,\n      source: 'kling-video'\n    }\n  };\n});"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                3200,
+                -240
+            ],
+            "id": "kling-extract-urls",
+            "name": "Extract Video URLs"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Mark failed submissions and HALT workflow\nconst items = $input.all();\n\n// Check if any items failed\nif (items.length > 0) {\n  const failedSegments = items.map(item => item.json.segment_index).join(', ');\n  const errorMsgs = items.map(item => item.json.errorMsg || 'Unknown error').join('; ');\n  \n  // Throw error to halt the entire workflow\n  throw new Error(`Kling generation failed after retry. Failed segments: [${failedSegments}]. Errors: ${errorMsgs}`);\n}\n\nreturn items;"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1040,
+                80
+            ],
+            "id": "kling-mark-failed",
+            "name": "Mark as Failed"
+        },
+        {
+            "parameters": {},
+            "type": "n8n-nodes-base.merge",
+            "typeVersion": 3,
+            "position": [
+                3440,
+                -160
+            ],
+            "id": "kling-merge-results",
+            "name": "Merge All Results"
+        },
+        {
+            "parameters": {
+                "aggregate": "aggregateAllItemData",
+                "destinationFieldName": "videos",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.aggregate",
+            "typeVersion": 1,
+            "position": [
+                3680,
+                -160
+            ],
+            "id": "kling-final-aggregate",
+            "name": "Final Aggregate"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Format final output - halt if any failures detected\nconst videos = $input.first().json.videos || [];\n\nconsole.log('=== Kling Format Final Output ===');\nconsole.log('Received', videos.length, 'total results');\n\n// Check for any failures\nconst failed = videos.filter(v => v.source === 'failed' || !v.videoUrl);\nif (failed.length > 0) {\n  const failedIndexes = failed.map(f => f.segment_index).join(', ');\n  throw new Error(`Kling failed for segments: [${failedIndexes}]. Halting workflow.`);\n}\n\n// Filter successful results with videoUrl\nconst successful = videos.filter(v => v.videoUrl && v.source === 'kling-video');\n\nconsole.log('Successful:', successful.length);\n\n// Sort by segment_index\nsuccessful.sort((a, b) => {\n  const aIdx = typeof a.segment_index === 'number' ? a.segment_index : 99999;\n  const bIdx = typeof b.segment_index === 'number' ? b.segment_index : 99999;\n  return aIdx - bIdx;\n});\n\nconsole.log('Final output:', successful.length, 'videos');\n\nreturn {\n  json: {\n    success: true,\n    videos: successful,\n    count: successful.length\n  }\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                3920,
+                -160
+            ],
+            "id": "kling-format-output",
+            "name": "Format Output"
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "When Executed by Another Workflow": {
+            "main": [
+                [
+                    {
+                        "node": "Setup API Key",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Setup API Key": {
+            "main": [
+                [
+                    {
+                        "node": "Pair Keyframes",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Pair Keyframes": {
+            "main": [
+                [
+                    {
+                        "node": "Submit to Kling",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Submit to Kling": {
+            "main": [
+                [
+                    {
+                        "node": "Check Submit Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Submit Results": {
+            "main": [
+                [
+                    {
+                        "node": "Submission Success?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Submission Success?": {
+            "main": [
+                [
+                    {
+                        "node": "Prep for Poll",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Mark as Failed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prep for Poll": {
+            "main": [
+                [
+                    {
+                        "node": "Wait 60s Initial",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Wait 60s Initial": {
+            "main": [
+                [
+                    {
+                        "node": "Poll Status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Poll Status": {
+            "main": [
+                [
+                    {
+                        "node": "Update Status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Status": {
+            "main": [
+                [
+                    {
+                        "node": "Aggregate Poll Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Aggregate Poll Results": {
+            "main": [
+                [
+                    {
+                        "node": "Check Completion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Completion": {
+            "main": [
+                [
+                    {
+                        "node": "All Done?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "All Done?": {
+            "main": [
+                [
+                    {
+                        "node": "Split Completed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Wait 20s Retry",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Wait 20s Retry": {
+            "main": [
+                [
+                    {
+                        "node": "Split Pending for Retry",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Pending for Retry": {
+            "main": [
+                [
+                    {
+                        "node": "Poll Status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Completed": {
+            "main": [
+                [
+                    {
+                        "node": "Get Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Results": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Video URLs",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract Video URLs": {
+            "main": [
+                [
+                    {
+                        "node": "Merge All Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Mark as Failed": {
+            "main": [
+                [
+                    {
+                        "node": "Merge All Results",
+                        "type": "main",
+                        "index": 1
+                    }
+                ]
+            ]
+        },
+        "Merge All Results": {
+            "main": [
+                [
+                    {
+                        "node": "Final Aggregate",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Final Aggregate": {
+            "main": [
+                [
+                    {
+                        "node": "Format Output",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "versionId": "kling-v1-001",
+    "meta": {
+        "instanceId": "5d73e47fbd672d304f06524b896d7eb8ee2688cc66dabdc7a4d0908c88a41b5f"
+    },
+    "id": "KlingMotionVideo001",
+    "tags": []
+}

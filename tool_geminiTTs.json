@@ -1,0 +1,278 @@
+{
+  "name": "tool_geminiTTs",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Normalize TTS response → { audioUrl, duration }\nconst res = $json;\n\n// adjust these paths to your TTS API\nconst audioUrl = res.url || res.data?.url || res.audioUrl || res.audio?.url;\nconst duration_s = Number(res.duration_sec ?? res.duration ?? res.data?.duration_sec ?? res.meta?.duration);\n\nif (!audioUrl || !Number.isFinite(duration_s)) {\n  throw new Error('TTS normalization failed: missing audioUrl or duration');\n}\n\nreturn [{ json: { audioUrl, duration: duration_s } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        32
+      ],
+      "id": "ff233e69-3dbb-4ec7-8e78-69c5730b97c3",
+      "name": "Normalize TTS1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 假设 TTS 的 Base64 PCM 在 Gemini 响应的：candidates[0].content.parts[0].inlineData.data\n// 如果你的字段不一样，把 base64 的取值那行改一下即可。\n\n// ===== 可按你的真实参数修改 =====\nconst SAMPLE_RATE = 24000;   // 采样率，Gemini TTS 常见 24000\nconst CHANNELS = 1;          // 声道数，通常 1\nconst BITS_PER_SAMPLE = 16;  // 位深，16-bit PCM\nconst LITTLE_ENDIAN = true;  // 大多数是小端；若听起来像噪音，改为 false 试试\n// =================================\n\nconst item = $input.first();\n\n// 1) 取出 Base64 的 PCM（按 Gemini TTS 的默认返回路径）\nconst base64 =\n  item.json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data\n  // 允许你把上一步已经放好的字段作为兜底\n  || item.json?.pcm_base64;\n\nif (!base64) {\n  throw new Error('找不到 Base64 PCM。请确认路径：candidates[0].content.parts[0].inlineData.data 或把它映射到 json.pcm_base64。');\n}\n\n// 2) 解码为 Buffer\nconst pcm = Buffer.from(base64, 'base64');\n\n// 3) 如有需要把大端→小端（WAV 头要求 LE）。16-bit 时逐样本对调字节\nlet pcmLE = pcm;\nif (!LITTLE_ENDIAN && BITS_PER_SAMPLE === 16) {\n  pcmLE = Buffer.alloc(pcm.length);\n  for (let i = 0; i < pcm.length; i += 2) {\n    pcmLE[i] = pcm[i + 1];\n    pcmLE[i + 1] = pcm[i];\n  }\n}\n\n// 4) 计算 WAV 参数并生成 44 字节的最小 WAV 头\nconst blockAlign = CHANNELS * (BITS_PER_SAMPLE / 8);\nconst byteRate   = SAMPLE_RATE * blockAlign;\nconst dataSize   = pcmLE.length;\n\nconst header = Buffer.alloc(44);\nheader.write('RIFF', 0);\nheader.writeUInt32LE(36 + dataSize, 4);\nheader.write('WAVE', 8);\nheader.write('fmt ', 12);\nheader.writeUInt32LE(16, 16);\nheader.writeUInt16LE(1, 20); // PCM\nheader.writeUInt16LE(CHANNELS, 22);\nheader.writeUInt32LE(SAMPLE_RATE, 24);\nheader.writeUInt32LE(byteRate, 28);\nheader.writeUInt16LE(blockAlign, 32);\nheader.writeUInt16LE(BITS_PER_SAMPLE, 34);\nheader.write('data', 36);\nheader.writeUInt32LE(dataSize, 40);\n\nconst wavBase64 = Buffer.concat([header, pcmLE]).toString('base64');\n\n// 5) 计算时长（秒）= 数据字节数 ÷ 字节率\nconst durationSec = dataSize / byteRate;\n\n// 6) 返回：保留原来的 wav_base64，并“多加一个参数” duration_sec\nreturn [{\n  json: {\n    wav_base64: wavBase64,\n    duration: Number(durationSec.toFixed(1))  // 例如 1.234\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        32
+      ],
+      "id": "fc973c0b-0c58-49dc-b014-777f81beacf4",
+      "name": "addwavheader"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "wav_base64",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -32,
+        32
+      ],
+      "id": "f415609d-8866-4e7b-ade8-aeb8c3e8a3ea",
+      "name": "tofile"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "AIzaSyDCP3PCP6LfcfzdyCEDZmVBUdM4eIUChkw"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"{{ $json.voicePrompt }}: {{ $json.text }}\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"responseModalities\": [\n      \"AUDIO\"\n    ],\n    \"speechConfig\": {\n      \"voiceConfig\": {\n        \"prebuiltVoiceConfig\": {\n          \"voiceName\": \"{{ $json.voiceName }}\"\n        }\n      }\n    }\n  }\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -288,
+        32
+      ],
+      "id": "85f6efa5-52e2-45a2-b116-d4b8e5326eef",
+      "name": "tts",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "amz-bucket-oktale",
+        "fileName": "=n8n/{{ $json.responseId || $now }}.wav",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [
+        112,
+        32
+      ],
+      "id": "d5e5ab65-7f4e-4ecf-9775-6d7a04da48ba",
+      "name": "Upload a file",
+      "credentials": {
+        "aws": {
+          "id": "iY5rz0uX4QJcPVkH",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nreturn {audioUrl:$input.first().json.Location,\n        fileName:$input.first().json.Key,\n        duration: Math.ceil($('addwavheader').first().json.duration)+1\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        32
+      ],
+      "id": "3e804cd0-dc5d-489f-9bda-6888bc0390af",
+      "name": "geminiTTS1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "520a1b2f-e7ee-449c-81fe-be5598d44a75",
+              "name": "audioUrl",
+              "value": "={{ $json.audioUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "a62de893-a9c2-4988-aa50-9c93f8767d28",
+              "name": "duration",
+              "value": "={{ $json.duration }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        32
+      ],
+      "id": "47c7a334-8ff7-4b87-bc72-154f4de008a5",
+      "name": "Return"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "text"
+            },
+            {
+              "name": "voiceName"
+            },
+            {
+              "name": "voicePrompt"
+            }
+          ]
+        }
+      },
+      "id": "46e849c6-8a5f-40ca-acf4-c53e74fb4202",
+      "typeVersion": 1.1,
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        -496,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Name\tGender\tTempo\nAchernar\tFemale\tSoft\nAchird\tMale\tFriendly\nAlgenib\tMale\tGravelly\nAlgieba\tMale\tSmooth\nAlnilam\tMale\tFirm\nAoede\tFemale\tBreezy\nAutonoe\tFemale\tBright\nCallirrhoe\tFemale\tEasy-going\nCharon\tMale\tInformative\nDespina\tFemale\tSmooth\nEnceladus\tMale\tBreathy\nErinome\tFemale\tClear\nFenrir\tMale\tExcitable\nGacrux\tFemale\tMature\nIapetus\tMale\tClear\nKore\tFemale\tFirm\nLaomedeia\tFemale\tUpbeat\nLeda\tFemale\tYouthful\nOrus\tMale\tFirm\nPulcherrima\tFemale\tForward\nPuck\tMale\tUpbeat\nRasalgethi\tMale\tInformative\nSadachbia\tMale\tLively\nSadaltager\tMale\tKnowledgeable\nSchedar\tMale\tEven\nSulafat\tFemale\tWarm\nUmbriel\tMale\tEasy-going\nVindemiatrix\tFemale\tGentle\nZephyr\tFemale\tBright\nZubenelgenubi\tMale\tCasual\n",
+        "height": 368,
+        "width": 352
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        -432
+      ],
+      "id": "975c2aa5-7bbb-422d-8128-36a9ed1a0af9",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {
+    "Start": [
+      {
+        "json": {
+          "text": "Movies, oh my gosh, I just just absolutely love them. They're like time machines taking you to different worlds and landscapes, and um, and I just can't get enough of it.",
+          "voiceName": "Acherna",
+          "voicePrompt": "Say cheerfully:"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Normalize TTS1": {
+      "main": [
+        [
+          {
+            "node": "Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "addwavheader": {
+      "main": [
+        [
+          {
+            "node": "tofile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tofile": {
+      "main": [
+        [
+          {
+            "node": "Upload a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tts": {
+      "main": [
+        [
+          {
+            "node": "addwavheader",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload a file": {
+      "main": [
+        [
+          {
+            "node": "geminiTTS1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "geminiTTS1": {
+      "main": [
+        [
+          {
+            "node": "Normalize TTS1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "tts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4b97f8bb-ce5d-4f8a-bd07-36ecc7615c84",
+  "meta": {
+    "instanceId": "5d73e47fbd672d304f06524b896d7eb8ee2688cc66dabdc7a4d0908c88a41b5f"
+  },
+  "id": "4txSteoVfzXMhwHg",
+  "tags": []
+}

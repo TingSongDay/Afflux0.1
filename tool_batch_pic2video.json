@@ -1,0 +1,1347 @@
+{
+  "name": "tool_batch_pic2video",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "images",
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -304,
+        -80
+      ],
+      "id": "039ba25d-1fe8-4564-aac6-a5cb4113bf21",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "api-key",
+              "name": "FalAPIKey",
+              "type": "string",
+              "value": "314691ea-f16e-4b50-834a-51b9b235134e:5c1875d90a9d57eb2791b1acec81d311"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        -80
+      ],
+      "id": "c1373ba1-bc92-4546-802a-fa81422df6a7",
+      "name": "Setup API Key"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 拆分 images 数组为多个 item\nconst images = $('When Executed by Another Workflow').first().json.images;\n\nreturn images.map((img, index) => {\n  let duration = img.duration;\n  \n  // 数据验证\n  if (typeof duration !== 'number') duration = 5;\n  if (duration < 2) duration = 2;\n  if (duration > 12) duration = 12;\n  duration = Math.ceil(duration);\n  \n  return {\n    json: {\n      pictureUrl: img.pictureUrl,\n      prompt: img.prompt,\n      duration: duration,\n      aspectRatio: img.aspectRatio || '9:16',\n      segment_index: img.segment_index ?? index\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        -80
+      ],
+      "id": "2a92663d-82b2-4512-b219-bb471d60f5fa",
+      "name": "Split Images Array"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://queue.fal.run/fal-ai/bytedance/seedance/v1/pro/fast/image-to-video",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": {{ JSON.stringify($json.prompt) }},\n  \"image_url\": \"{{ $json.pictureUrl }}\",\n  \"duration\": \"{{ $json.duration }}\",\n  \"aspect_ratio\": \"{{ $json.aspectRatio }}\",\n  \"resolution\": \"480p\",\n  \"enable_safety_checker\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        336,
+        -80
+      ],
+      "id": "ee94af69-1ee7-40ae-85ee-046fd920d9b1",
+      "name": "Submit to SeeDANCE",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 检查 SeeDANCE 提交结果，区分成功和失败\nconst allItems = $input.all();\nconst originalInputs = $('Split Images Array').all();\n\nreturn allItems.map((item, index) => {\n  const original = originalInputs[index]?.json || {};\n  const hasError = item.json.error || item.json.detail || !item.json.request_id;\n  const errorMsg = item.json.error?.message || item.json.detail || item.json.message || '';\n  \n  // 检查是否是内容审核错误\n  const isContentError = errorMsg.toLowerCase().includes('content') || \n                         errorMsg.toLowerCase().includes('flagged') ||\n                         errorMsg.toLowerCase().includes('safety') ||\n                         errorMsg.toLowerCase().includes('moderation');\n  \n  if (hasError) {\n    return {\n      json: {\n        status: 'error',\n        needsFallback: isContentError,\n        segment_index: original.segment_index,\n        pictureUrl: original.pictureUrl,\n        prompt: original.prompt,\n        duration: original.duration,\n        aspectRatio: original.aspectRatio,\n        errorMsg: errorMsg || 'SeeDANCE submission failed'\n      }\n    };\n  } else {\n    return {\n      json: {\n        status: 'submitted',\n        needsFallback: false,\n        request_id: item.json.request_id,\n        status_url: item.json.status_url,\n        response_url: item.json.response_url,\n        segment_index: original.segment_index,\n        pictureUrl: original.pictureUrl,\n        prompt: original.prompt,\n        duration: original.duration,\n        aspectRatio: original.aspectRatio\n      }\n    };\n  }\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -80
+      ],
+      "id": "db7bfa23-9954-409c-b222-986f5457d5a0",
+      "name": "Check SeeDANCE Results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-submitted",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "submitted",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        -80
+      ],
+      "id": "route-seedance-result",
+      "name": "SeeDANCE Success?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 准备成功提交的任务进行轮询\nconst items = $input.all();\n\nreturn items.map(item => ({\n  json: {\n    request_id: item.json.request_id,\n    status_url: item.json.status_url,\n    response_url: item.json.response_url,\n    segment_index: item.json.segment_index,\n    pictureUrl: item.json.pictureUrl,\n    duration: item.json.duration,\n    status: 'IN_QUEUE',\n    source: 'seedance'\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        -160
+      ],
+      "id": "prep-seedance-poll",
+      "name": "Prep SeeDANCE Poll"
+    },
+    {
+      "parameters": {
+        "amount": 50
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1280,
+        -160
+      ],
+      "id": "fbe7ef0d-bfc8-4f29-a308-704bd946216f",
+      "name": "Wait 50s Initial",
+      "webhookId": "batch-wait-001"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.status_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1520,
+        -160
+      ],
+      "id": "af35dcf4-9ddf-48fd-803b-a78ac1fa56d3",
+      "name": "Poll SeeDANCE Status",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 更新轮询状态，检测失败情况\nconst allItems = $input.all();\nconst pollInputs = $('Prep SeeDANCE Poll').all();\n\nreturn allItems.map((item, index) => {\n  const original = pollInputs[index]?.json || {};\n  const status = item.json.status || 'UNKNOWN';\n  const errorMsg = item.json.error?.message || item.json.detail || '';\n  \n  // 检查是否是内容审核错误（可能在处理过程中被检测到）\n  const isContentError = errorMsg.toLowerCase().includes('content') || \n                         errorMsg.toLowerCase().includes('flagged') ||\n                         errorMsg.toLowerCase().includes('safety');\n  \n  return {\n    json: {\n      request_id: original.request_id,\n      status_url: original.status_url,\n      response_url: original.response_url,\n      segment_index: original.segment_index,\n      pictureUrl: original.pictureUrl,\n      duration: original.duration,\n      status: status,\n      source: 'seedance',\n      needsFallback: status === 'FAILED' && isContentError,\n      errorMsg: errorMsg\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        -160
+      ],
+      "id": "d21671d7-fff4-47ef-8f2b-1ab6c2cd1b20",
+      "name": "Update SeeDANCE Status"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "tasks",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        -160
+      ],
+      "id": "690013f0-6532-45af-bd38-8148ea606594",
+      "name": "Aggregate SeeDANCE Poll"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 检查 SeeDANCE 任务状态\nconst tasks = $input.first().json.tasks;\nconst completed = tasks.filter(t => t.status === 'COMPLETED');\nconst failed = tasks.filter(t => t.status === 'FAILED');\nconst pending = tasks.filter(t => t.status !== 'COMPLETED' && t.status !== 'FAILED');\n\nconst allDone = pending.length === 0;\nconst needsFallback = failed.filter(t => t.needsFallback);\n\nreturn {\n  json: {\n    tasks: tasks,\n    allDone: allDone,\n    completedCount: completed.length,\n    failedCount: failed.length,\n    pendingCount: pending.length,\n    needsFallbackCount: needsFallback.length,\n    totalCount: tasks.length\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        -160
+      ],
+      "id": "700f945b-804f-4564-a6ce-57245f298c36",
+      "name": "Check SeeDANCE Completion"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-001",
+              "leftValue": "={{ $json.allDone }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "name": "filter.operator.true"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2480,
+        -160
+      ],
+      "id": "25fbd9ac-eda0-4fda-b050-a0025b450d70",
+      "name": "SeeDANCE All Done?"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2480,
+        64
+      ],
+      "id": "ae8aab0b-3b1a-4c60-89d4-f31ab5e10cba",
+      "name": "Wait 15s Retry",
+      "webhookId": "batch-wait-retry-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 拆分未完成的任务继续轮询\nconst tasks = $input.first().json.tasks;\nconst pending = tasks.filter(t => t.status !== 'COMPLETED' && t.status !== 'FAILED');\nreturn pending.map(task => ({ json: task }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2704,
+        64
+      ],
+      "id": "6800abf4-1ea2-4bae-b975-9cc211e9eb09",
+      "name": "Split Pending for Retry"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 分离成功和需要fallback的任务\nconst tasks = $input.first().json.tasks;\n\nconst completed = tasks.filter(t => t.status === 'COMPLETED');\nconst needsFallback = tasks.filter(t => t.status === 'FAILED' && t.needsFallback);\nconst permanentFailed = tasks.filter(t => t.status === 'FAILED' && !t.needsFallback);\n\nreturn {\n  json: {\n    completed: completed,\n    needsFallback: needsFallback,\n    permanentFailed: permanentFailed,\n    completedCount: completed.length,\n    fallbackCount: needsFallback.length,\n    failedCount: permanentFailed.length\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2720,
+        -240
+      ],
+      "id": "separate-results",
+      "name": "Separate Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 拆分成功的任务去获取结果\nconst data = $input.first().json;\nconst completed = data.completed || [];\nreturn completed.map(task => ({ json: task }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2960,
+        -320
+      ],
+      "id": "1e5e27f7-10b6-4b0c-a804-69215dfb532a",
+      "name": "Split Completed"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.response_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3200,
+        -320
+      ],
+      "id": "739f658a-cd78-4bb6-a011-f2addf343419",
+      "name": "Get SeeDANCE Results",
+      "retryOnFail": true,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "jsCode": "// 提取 SeeDANCE 视频结果\nconst allItems = $input.all();\nconst resultInputs = $('Split Completed').all();\n\nreturn allItems.map((item, index) => {\n  let videoUrl = '';\n  if (item.json.video && item.json.video.url) {\n    videoUrl = item.json.video.url;\n  }\n  \n  return {\n    json: {\n      segment_index: resultInputs[index]?.json.segment_index,\n      pictureUrl: resultInputs[index]?.json.pictureUrl,\n      videoUrl: videoUrl,\n      duration: resultInputs[index]?.json.duration,\n      source: 'seedance'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3440,
+        -320
+      ],
+      "id": "84a10786-f950-4c23-9894-0a854f5d3465",
+      "name": "Extract SeeDANCE URLs"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 拆分需要Kling fallback的任务\nconst data = $input.first().json;\nconst needsFallback = data.needsFallback || [];\nreturn needsFallback.map(task => ({ json: task }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2960,
+        -160
+      ],
+      "id": "split-for-fallback",
+      "name": "Split for Kling Fallback"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 准备失败的任务走 Kling fallback\nconst items = $input.all();\n\nreturn items.map(item => ({\n  json: {\n    pictureUrl: item.json.pictureUrl,\n    prompt: item.json.prompt,\n    duration: item.json.duration,\n    aspectRatio: item.json.aspectRatio || '9:16',\n    segment_index: item.json.segment_index\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        80
+      ],
+      "id": "prep-kling-input",
+      "name": "Prep Kling Input"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://queue.fal.run/fal-ai/kling-video/v1.6/pro/image-to-video",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": {{ JSON.stringify($json.prompt) }},\n  \"image_url\": \"{{ $json.pictureUrl }}\",\n  \"duration\": \"{{ $json.duration <= 5 ? '5' : '10' }}\",\n  \"aspect_ratio\": \"{{ $json.aspectRatio }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        80
+      ],
+      "id": "submit-kling",
+      "name": "Submit to Kling",
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 保存 Kling 提交信息\nconst allItems = $input.all();\nconst prepInputs = $('Prep Kling Input').all();\n\nreturn allItems.map((item, index) => {\n  const original = prepInputs[index]?.json || {};\n  const hasError = item.json.error || !item.json.request_id;\n  \n  if (hasError) {\n    // Kling 也失败了，返回错误\n    return {\n      json: {\n        status: 'FAILED',\n        segment_index: original.segment_index,\n        pictureUrl: original.pictureUrl,\n        duration: original.duration,\n        source: 'kling',\n        errorMsg: item.json.error?.message || 'Kling submission failed'\n      }\n    };\n  }\n  \n  return {\n    json: {\n      status: 'IN_QUEUE',\n      request_id: item.json.request_id,\n      status_url: item.json.status_url,\n      response_url: item.json.response_url,\n      segment_index: original.segment_index,\n      pictureUrl: original.pictureUrl,\n      duration: original.duration,\n      source: 'kling'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        80
+      ],
+      "id": "save-kling-info",
+      "name": "Save Kling Info"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "kling-has-request",
+              "leftValue": "={{ $json.request_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1760,
+        80
+      ],
+      "id": "kling-submitted-ok",
+      "name": "Kling Submitted?"
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2000,
+        0
+      ],
+      "id": "wait-kling-initial",
+      "name": "Wait 60s Kling",
+      "webhookId": "kling-wait-001"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.status_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2240,
+        0
+      ],
+      "id": "poll-kling-status",
+      "name": "Poll Kling Status",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 更新 Kling 轮询状态\nconst allItems = $input.all();\nconst klingInputs = $('Save Kling Info').all().filter(i => i.json.request_id);\n\nreturn allItems.map((item, index) => {\n  const original = klingInputs[index]?.json || {};\n  \n  return {\n    json: {\n      request_id: original.request_id,\n      status_url: original.status_url,\n      response_url: original.response_url,\n      segment_index: original.segment_index,\n      pictureUrl: original.pictureUrl,\n      duration: original.duration,\n      status: item.json.status || 'UNKNOWN',\n      source: 'kling'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        0
+      ],
+      "id": "update-kling-status",
+      "name": "Update Kling Status"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "tasks",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2720,
+        0
+      ],
+      "id": "aggregate-kling-poll",
+      "name": "Aggregate Kling Poll"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 检查 Kling 任务状态\nconst tasks = $input.first().json.tasks;\nconst allCompleted = tasks.every(t => t.status === 'COMPLETED' || t.status === 'FAILED');\n\nreturn {\n  json: {\n    tasks: tasks,\n    allCompleted: allCompleted,\n    completedCount: tasks.filter(t => t.status === 'COMPLETED').length,\n    failedCount: tasks.filter(t => t.status === 'FAILED').length,\n    totalCount: tasks.length\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2960,
+        0
+      ],
+      "id": "check-kling-completion",
+      "name": "Check Kling Completion"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "kling-all-done",
+              "leftValue": "={{ $json.allCompleted }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3200,
+        0
+      ],
+      "id": "kling-all-done",
+      "name": "Kling All Done?"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3200,
+        224
+      ],
+      "id": "wait-kling-retry",
+      "name": "Wait 20s Kling Retry",
+      "webhookId": "kling-wait-retry-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 拆分未完成的 Kling 任务继续轮询\nconst tasks = $input.first().json.tasks;\nconst pending = tasks.filter(t => t.status !== 'COMPLETED' && t.status !== 'FAILED');\nreturn pending.map(task => ({ json: task }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3440,
+        224
+      ],
+      "id": "split-kling-retry",
+      "name": "Split Kling Retry"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 拆分完成的 Kling 任务去获取结果\nconst tasks = $input.first().json.tasks;\nconst completed = tasks.filter(t => t.status === 'COMPLETED');\nreturn completed.map(task => ({ json: task }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3440,
+        -80
+      ],
+      "id": "split-kling-results",
+      "name": "Split Kling Results"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.response_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3680,
+        -80
+      ],
+      "id": "get-kling-results",
+      "name": "Get Kling Results",
+      "retryOnFail": true,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "jsCode": "// 提取 Kling 视频结果\nconst allItems = $input.all();\nconst resultInputs = $('Split Kling Results').all();\n\nreturn allItems.map((item, index) => {\n  let videoUrl = '';\n  if (item.json.video && item.json.video.url) {\n    videoUrl = item.json.video.url;\n  }\n  \n  return {\n    json: {\n      segment_index: resultInputs[index]?.json.segment_index,\n      pictureUrl: resultInputs[index]?.json.pictureUrl,\n      videoUrl: videoUrl,\n      duration: resultInputs[index]?.json.duration,\n      source: 'kling'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3920,
+        -80
+      ],
+      "id": "extract-kling-urls",
+      "name": "Extract Kling URLs"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 提取 SeeDANCE 阶段失败需要fallback的任务的视频结果\n// (从 Separate Results 节点出来后走 Kling 流程的)\nconst allItems = $input.all();\nconst resultInputs = $('Split for Kling Fallback').all();\n\nreturn allItems.map((item, index) => {\n  let videoUrl = '';\n  if (item.json.video && item.json.video.url) {\n    videoUrl = item.json.video.url;\n  }\n  \n  return {\n    json: {\n      segment_index: resultInputs[index]?.json.segment_index,\n      pictureUrl: resultInputs[index]?.json.pictureUrl,\n      videoUrl: videoUrl,\n      duration: resultInputs[index]?.json.duration,\n      source: 'kling_fallback'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3680,
+        -160
+      ],
+      "id": "extract-kling-fallback-urls",
+      "name": "Extract Kling Fallback URLs"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://queue.fal.run/fal-ai/kling-video/v1.6/pro/image-to-video",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": {{ JSON.stringify($json.prompt || 'cinematic motion') }},\n  \"image_url\": \"{{ $json.pictureUrl }}\",\n  \"duration\": \"{{ $json.duration <= 5 ? '5' : '10' }}\",\n  \"aspect_ratio\": \"{{ $json.aspectRatio || '9:16' }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3200,
+        -160
+      ],
+      "id": "submit-kling-fallback",
+      "name": "Submit Kling Fallback",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// 保存 Kling fallback 提交信息\nconst allItems = $input.all();\nconst prepInputs = $('Split for Kling Fallback').all();\n\nreturn allItems.map((item, index) => {\n  const original = prepInputs[index]?.json || {};\n  \n  return {\n    json: {\n      status_url: item.json.status_url,\n      response_url: item.json.response_url,\n      segment_index: original.segment_index,\n      pictureUrl: original.pictureUrl,\n      duration: original.duration,\n      source: 'kling_fallback'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3440,
+        -160
+      ],
+      "id": "save-kling-fallback-info",
+      "name": "Save Kling Fallback Info"
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2960,
+        -160
+      ],
+      "id": "wait-kling-fallback",
+      "name": "Wait Kling Fallback",
+      "webhookId": "kling-fallback-wait-001"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.response_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Key {{ $('Setup API Key').first().json.FalAPIKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3920,
+        -160
+      ],
+      "id": "get-kling-fallback-results",
+      "name": "Get Kling Fallback Results",
+      "retryOnFail": true,
+      "maxTries": 5
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        4400,
+        -160
+      ],
+      "id": "merge-all-results",
+      "name": "Merge All Results"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "videos",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        4640,
+        -160
+      ],
+      "id": "e28ec9a0-592f-4dff-a53f-7231cc1f4f30",
+      "name": "Final Aggregate"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ⚠️ 去重逻辑 - 优先保留 seedance 结果，然后是 kling_fallback，最后是 kling\nconst videos = $input.first().json.videos;\n\nconsole.log('=== Format Final Output ===');\nconsole.log('收到总计', videos.length, '个结果');\n\n// 按 segment_index 分组\nconst grouped = {};\nvideos.forEach(vid => {\n  const idx = vid.segment_index;\n  if (idx === undefined) return;\n  if (!grouped[idx]) {\n    grouped[idx] = [];\n  }\n  grouped[idx].push(vid);\n});\n\nconsole.log('分组结果:', Object.keys(grouped).map(k => `${k}: ${grouped[k].length}个`).join(', '));\n\n// 每个 index 只保留一个结果，优先级: seedance > kling_fallback > kling\nconst deduped = [];\nObject.keys(grouped).forEach(idx => {\n  const items = grouped[idx];\n  const seedanceItem = items.find(i => i.source === 'seedance' && i.videoUrl);\n  const klingFallbackItem = items.find(i => i.source === 'kling_fallback' && i.videoUrl);\n  const klingItem = items.find(i => i.source === 'kling' && i.videoUrl);\n  \n  if (seedanceItem) {\n    console.log(`Index ${idx}: 使用 SeeDANCE 结果`);\n    deduped.push(seedanceItem);\n  } else if (klingFallbackItem) {\n    console.log(`Index ${idx}: 使用 Kling Fallback 结果`);\n    deduped.push(klingFallbackItem);\n  } else if (klingItem) {\n    console.log(`Index ${idx}: 使用 Kling 结果`);\n    deduped.push(klingItem);\n  } else {\n    console.log(`Index ${idx}: ⚠️ 无有效结果`);\n  }\n});\n\n// 排序\ndeduped.sort((a, b) => {\n  const aIdx = typeof a.segment_index === 'number' ? a.segment_index : 99999;\n  const bIdx = typeof b.segment_index === 'number' ? b.segment_index : 99999;\n  return aIdx - bIdx;\n});\n\nconsole.log('最终输出', deduped.length, '个结果');\n\nreturn {\n  json: {\n    success: true,\n    videos: deduped,\n    count: deduped.length\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4880,
+        -160
+      ],
+      "id": "0a9605ec-a66a-4385-9ed4-3fe8455c4259",
+      "name": "Format Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kling 提交失败的任务，标记为最终失败\nconst items = $input.all();\n\nreturn items.map(item => ({\n  json: {\n    segment_index: item.json.segment_index,\n    pictureUrl: item.json.pictureUrl,\n    videoUrl: '',\n    duration: item.json.duration,\n    source: 'failed',\n    errorMsg: item.json.errorMsg || 'Both SeeDANCE and Kling failed'\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        160
+      ],
+      "id": "mark-failed",
+      "name": "Mark as Failed"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "images": [
+            {
+              "pictureUrl": "https://video-analyze-perframe.s3.us-east-2.amazonaws.com/Vnpv0OWy2Zo/Vnpv0OWy2Zo_000_at_0_00s.jpg",
+              "prompt": "A woman dancing elegantly",
+              "duration": 2,
+              "aspectRatio": "9:16",
+              "segment_index": 0
+            },
+            {
+              "pictureUrl": "https://video-analyze-perframe.s3.us-east-2.amazonaws.com/5313ip2watA/5313ip2watA_002_at_4_37s.jpg",
+              "prompt": "Camera slowly zooms in",
+              "duration": 3,
+              "aspectRatio": "9:16",
+              "segment_index": 1
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Setup API Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup API Key": {
+      "main": [
+        [
+          {
+            "node": "Split Images Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Images Array": {
+      "main": [
+        [
+          {
+            "node": "Submit to SeeDANCE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit to SeeDANCE": {
+      "main": [
+        [
+          {
+            "node": "Check SeeDANCE Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check SeeDANCE Results": {
+      "main": [
+        [
+          {
+            "node": "SeeDANCE Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SeeDANCE Success?": {
+      "main": [
+        [
+          {
+            "node": "Prep SeeDANCE Poll",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep Kling Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep SeeDANCE Poll": {
+      "main": [
+        [
+          {
+            "node": "Wait 50s Initial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 50s Initial": {
+      "main": [
+        [
+          {
+            "node": "Poll SeeDANCE Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll SeeDANCE Status": {
+      "main": [
+        [
+          {
+            "node": "Update SeeDANCE Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update SeeDANCE Status": {
+      "main": [
+        [
+          {
+            "node": "Aggregate SeeDANCE Poll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate SeeDANCE Poll": {
+      "main": [
+        [
+          {
+            "node": "Check SeeDANCE Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check SeeDANCE Completion": {
+      "main": [
+        [
+          {
+            "node": "SeeDANCE All Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SeeDANCE All Done?": {
+      "main": [
+        [
+          {
+            "node": "Separate Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 15s Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15s Retry": {
+      "main": [
+        [
+          {
+            "node": "Split Pending for Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Pending for Retry": {
+      "main": [
+        [
+          {
+            "node": "Poll SeeDANCE Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separate Results": {
+      "main": [
+        [
+          {
+            "node": "Split Completed",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Split for Kling Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Completed": {
+      "main": [
+        [
+          {
+            "node": "Get SeeDANCE Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get SeeDANCE Results": {
+      "main": [
+        [
+          {
+            "node": "Extract SeeDANCE URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract SeeDANCE URLs": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split for Kling Fallback": {
+      "main": [
+        [
+          {
+            "node": "Wait Kling Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Kling Fallback": {
+      "main": [
+        [
+          {
+            "node": "Submit Kling Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit Kling Fallback": {
+      "main": [
+        [
+          {
+            "node": "Save Kling Fallback Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Kling Fallback Info": {
+      "main": [
+        [
+          {
+            "node": "Get Kling Fallback Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Kling Fallback Results": {
+      "main": [
+        [
+          {
+            "node": "Extract Kling Fallback URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Kling Fallback URLs": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Prep Kling Input": {
+      "main": [
+        [
+          {
+            "node": "Submit to Kling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit to Kling": {
+      "main": [
+        [
+          {
+            "node": "Save Kling Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Kling Info": {
+      "main": [
+        [
+          {
+            "node": "Kling Submitted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kling Submitted?": {
+      "main": [
+        [
+          {
+            "node": "Wait 60s Kling",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark as Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 60s Kling": {
+      "main": [
+        [
+          {
+            "node": "Poll Kling Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Kling Status": {
+      "main": [
+        [
+          {
+            "node": "Update Kling Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Kling Status": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Kling Poll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Kling Poll": {
+      "main": [
+        [
+          {
+            "node": "Check Kling Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Kling Completion": {
+      "main": [
+        [
+          {
+            "node": "Kling All Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kling All Done?": {
+      "main": [
+        [
+          {
+            "node": "Split Kling Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 20s Kling Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20s Kling Retry": {
+      "main": [
+        [
+          {
+            "node": "Split Kling Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Kling Retry": {
+      "main": [
+        [
+          {
+            "node": "Poll Kling Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Kling Results": {
+      "main": [
+        [
+          {
+            "node": "Get Kling Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Kling Results": {
+      "main": [
+        [
+          {
+            "node": "Extract Kling URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Kling URLs": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Failed": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Results": {
+      "main": [
+        [
+          {
+            "node": "Final Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2a606e25-4b99-5051-9615-76240d498e38",
+  "meta": {
+    "instanceId": "5d73e47fbd672d304f06524b896d7eb8ee2688cc66dabdc7a4d0908c88a41b5f"
+  },
+  "id": "FqTaHLC4ZUkofjmw",
+  "tags": []
+}

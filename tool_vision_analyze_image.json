@@ -1,0 +1,150 @@
+{
+    "name": "tool_vision_analyze_image",
+    "nodes": [
+        {
+            "parameters": {
+                "workflowInputs": {
+                    "values": [
+                        {
+                            "name": "image_url",
+                            "type": "string"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.executeWorkflowTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                0,
+                0
+            ],
+            "id": "trigger",
+            "name": "When Executed by Another Workflow"
+        },
+        {
+            "parameters": {
+                "url": "={{ $json.image_url }}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "file",
+                            "outputPropertyName": "data"
+                        }
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                220,
+                0
+            ],
+            "id": "download_image",
+            "name": "Download Image"
+        },
+        {
+            "parameters": {
+                "modelName": "models/gemini-2.5-flash",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+            "typeVersion": 1,
+            "position": [
+                440,
+                200
+            ],
+            "id": "gemini_model",
+            "name": "Google Gemini Model",
+            "credentials": {
+                "googlePalmApi": {
+                    "id": "lk2Hh7FYTTapvDqs",
+                    "name": "Google Gemini(PaLM) Api account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "Describe the character in this image in extreme detail (face, hair, age, clothing, colors, distinctive features). Also briefly describe the lighting and background. Focus on physical consistency details.",
+                "hasOutputParser": false,
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.chainLlm",
+            "typeVersion": 1.4,
+            "position": [
+                640,
+                0
+            ],
+            "id": "gemini_analyze",
+            "name": "Gemini Vision Analyze"
+        },
+        {
+            "parameters": {
+                "jsCode": "return { json: { description: $input.first().json.text } };"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1000,
+                0
+            ],
+            "id": "format_output",
+            "name": "Format Output"
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "When Executed by Another Workflow": {
+            "main": [
+                [
+                    {
+                        "node": "Download Image",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Download Image": {
+            "main": [
+                [
+                    {
+                        "node": "Gemini Vision Analyze",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Gemini Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Gemini Vision Analyze",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Gemini Vision Analyze": {
+            "main": [
+                [
+                    {
+                        "node": "Format Output",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": true,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "versionId": "tool-vision-v1",
+    "meta": {
+        "templateCredsSetupCompleted": true
+    }
+}

@@ -1,0 +1,624 @@
+{
+  "name": "tool_cacheAndAnalyzeVideo",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "url-field",
+              "name": "url",
+              "type": "string",
+              "value": "={{ $('When Executed by Another Workflow').item.json.youtube_video_url }}"
+            },
+            {
+              "id": "yt-api-field",
+              "name": "youtubeApiKey",
+              "type": "string",
+              "value": "AIzaSyCVlNefr6DCU2LnTxQQeFFiZ5nmjOkW6To"
+            },
+            {
+              "id": "gemini-api-field",
+              "name": "geminiApiKey",
+              "type": "string",
+              "value": "AIzaSyCVlNefr6DCU2LnTxQQeFFiZ5nmjOkW6To"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e91f96b3-b583-40f4-817a-287caed02234",
+      "name": "Set YouTube URL & Keys1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + $json[\"geminiApiKey\"] }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "={{ [{\n  \"parts\": [\n    {\n      \"text\": \"Analyze this video for viral video recreation. We need to SWAP THE PERSON and ALTER THE BACKGROUND while keeping the same viral appeal.\\n\\n## OUTPUT FORMAT (JSON)\\nReturn a JSON object with these sections:\\n\\n### 1. script_extraction\\nArray of objects with:\\n- timestamp_start, timestamp_end\\n- type: 'narration' | 'dialogue' | 'caption' | 'on-screen_text' | 'background_music'\\n- content: the text or audio description\\n- implied_emotion, tone\\n\\n### 2. person_analysis (CRITICAL FOR SWAPPING)\\nFor EACH scene/shot, describe:\\n- person_description: age, gender, clothing, distinctive features\\n- pose: exact body position (standing, sitting, leaning, etc.)\\n- action: what they are doing (talking, walking, dancing, gesturing)\\n- facial_expression: emotion shown\\n- body_language: hand gestures, head movements, posture\\n- camera_framing: how much of person is visible (full body, waist up, close-up face)\\n\\n### 3. background_analysis (CRITICAL FOR ALTERING)\\nFor EACH scene/shot, describe:\\n- location_type: indoor/outdoor, specific setting (bedroom, kitchen, park, street)\\n- key_elements: furniture, objects, landmarks visible\\n- lighting: natural/artificial, time of day, mood\\n- color_palette: dominant colors\\n- depth: foreground, midground, background elements\\n- suggested_alternative: a SIMILAR but DIFFERENT setting that would work\\n\\n### 4. shot_breakdown\\nFor EACH shot:\\n- shot_number, timestamp_start, timestamp_end\\n- shot_type: close-up, medium, wide, POV, drone, etc.\\n- camera_movement: static, pan, tilt, dolly, handheld\\n- motion_description: detailed description of ALL movement in frame\\n- transition_to_next: cut, fade, swipe, etc.\\n\\n### 5. viral_elements\\n- hook: what makes the first 3 seconds attention-grabbing\\n- emotional_arc: how emotions build through the video\\n- pacing: rhythm and energy level\\n- audio_importance: how critical is the soundtrack to virality (1-10)\\n\\nBe extremely detailed about person poses and actions - this data will be used to recreate the exact movements with a different character.\"\n    },\n    {\n      \"file_data\": {\n        \"file_uri\": $json.url\n      }\n    }\n  ]\n}] }}"
+            },
+            {
+              "name": "generationConfig",
+              "value": "={{ { \"response_mime_type\": \"application/json\", \"temperature\": 0 } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "22493a10-fb9e-41a9-8d78-889fd35f493a",
+      "name": "Scene by Scene Analyzer Prompt1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        512,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "youtube_video_url"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -928,
+        -256
+      ],
+      "id": "e1dd3f3d-03d0-447e-b5af-9e7144309506",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "content": "\u8bfb\u53d6\u7f13\u5b58\uff0c\u5206\u6790\u89c6\u9891\uff0c\u5206\u6790\u8f6c\u573a\u5e76\u83b7\u53d6\u5e27\u56fe\uff0c\u4fdd\u5b58\u81f3\u6570\u636e\u5e93",
+        "width": 784
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -672
+      ],
+      "id": "0f688345-4d3b-4e48-b874-6149ec102a15",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "\u5206\u6790\u89c6\u9891",
+        "height": 224,
+        "width": 736,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        192,
+        -112
+      ],
+      "id": "2e403f07-2826-4d62-8b83-0f692295ab35",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/UUhJDfKJT2SsXdclR/run-sync-get-dataset-items?token=YOUR_APIFY_TOKEN_HERE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"filenameTemplateParts\": [\n        \"timestamp\"\n    ],\n    \"googleCloudBucketName\": \"hyperhusk01-function-result-public\",\n    \"googleCloudServiceKey\": \"ENCRYPTED_VALUE:Bi214hAKBVnwRiGhxR46MztZnzPxTR6JBSt/ZD3aKSDpDD5pyDBI23mzkyJNymAnWN71tBh1AmdHMl0HWfdm69hSb7jRbhMaDbXjLZ0cACV/JWkmx/dHb+yymEjWQSODy3bgAsnOKwaWviQ4tTUFUtNRAY2Un/Ph6VjJoqvqv9BBQZkEYmLOkTqNkulataQq4SFLp7/eLY5adkGNfSqPL3HCl7ja3TfmT7eXR4ipQdYBBuSMaP4F1Fca41QtuRn8h0b3riySdpN8rp69KeDZSfOHzcP1wiwRQEh8y54UN8PTjYd6YXOV19zYcRzg7HfX2Xd/IOjO2QhkEmBZ6zxstg==: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\",\n    \"preferredFormat\": \"mp4\",\n    \"preferredQuality\": \"1080p\",\n    \"videos\": [\n        {\n            \"url\": \"{{ $('When Executed by Another Workflow').item.json.youtube_video_url }}\"\n        }\n    ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1200,
+        -64
+      ],
+      "id": "d69229f4-3d66-474a-8c1a-78a3e6c7c286",
+      "name": "crwalvideo"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/web3shopify~apify-ffmpeg-shot-detect/run-sync-get-dataset-items?token=YOUR_APIFY_TOKEN_HERE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"videoUrl\": \"{{ $json.downloadedFileUrl }}\",\n    \"videoId\": \"{{ $json.id }}\",\n    \"threshold\": 0.15,\n    \"minFrames\": 4,\n    \"intervalSeconds\": 5\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1408,
+        -64
+      ],
+      "id": "7af45db4-46a6-4c07-aadf-2be9e69ecedd",
+      "name": "shotdeteandpic"
+    },
+    {
+      "parameters": {
+        "content": "\u4e0b\u8f7d\u89c6\u9891\uff0c\u8bc6\u522b\u8f6c\u573a\u83b7\u53d6\u5e27\u56fe",
+        "height": 224,
+        "width": 736,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        -128
+      ],
+      "id": "db4a8262-7d1b-4d99-a2e2-f236482724c2",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "video_analyze_result",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "youtube_video_id",
+              "keyValue": "={{ $json.youtube_video_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        -256
+      ],
+      "id": "cdf07126-2944-4a8e-ae67-630c03a9a07a",
+      "name": "Get a row",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "lfcY5OiduwiDjn05",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3bb7015f-3df6-4dcf-978c-bef035f813f3",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -208,
+        -256
+      ],
+      "id": "1cdcf3b5-5e03-4885-9594-5953493f1737",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -352
+      ],
+      "id": "0b5cd650-c904-4f3f-8e19-9ae3bba540d0",
+      "name": "return1"
+    },
+    {
+      "parameters": {
+        "tableId": "video_analyze_result",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "youtube_video_url",
+              "fieldValue": "={{ $('When Executed by Another Workflow').item.json.youtube_video_url }}"
+            },
+            {
+              "fieldId": "youtube_video_id",
+              "fieldValue": "={{ $('splitid').item.json.youtube_video_id }}"
+            },
+            {
+              "fieldId": "analyze_result",
+              "fieldValue": "={{ $('returanalyze').item.json.analysis }}"
+            },
+            {
+              "fieldId": "clip_frame_result",
+              "fieldValue": "={{ $json.result[0].json }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1888,
+        -64
+      ],
+      "id": "5b8eb1d5-e6f1-4b62-a99e-14c004903206",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "lfcY5OiduwiDjn05",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// \u8fd9\u4e2a\u7248\u672c\u53ef\u4ee5\u76f4\u63a5\u653e\u5728\u4f60\u7684\u5de5\u4f5c\u6d41\u4e2d\n// \u63a5\u5728 \"When Executed by Another Workflow\" \u8282\u70b9\u540e\u9762\n\nconst input = $input.first();\n\n// \u83b7\u53d6\u8f93\u5165URL\nconst youtubeUrl = input.json.youtube_video_url;\n\n// \u63d0\u53d6\u89c6\u9891ID\nfunction extractVideoId(url) {\n  // \u65b9\u6cd51\uff1a\u6b63\u5219\u5339\u914d\n  const regex = /(?:youtube\\.com\\/(?:shorts\\/|watch\\?v=|embed\\/|v\\/)|youtu\\.be\\/)([^/?&]+)/;\n  const match = url.match(regex);\n  if (match) {\n    return match[1].split('?')[0];\n  }\n  \n  // \u65b9\u6cd52\uff1aURL API\u89e3\u6790\uff08\u66f4\u51c6\u786e\uff09\n  try {\n    const urlObj = new URL(url);\n    const pathname = urlObj.pathname;\n    \n    // \u5904\u7406 shorts \u683c\u5f0f\n    if (pathname.startsWith('/shorts/')) {\n      const parts = pathname.split('/');\n      return parts[2] ? parts[2].split('?')[0] : null;\n    }\n    \n    // \u5904\u7406\u6807\u51c6\u683c\u5f0f\n    if (urlObj.searchParams.has('v')) {\n      return urlObj.searchParams.get('v').split('?')[0];\n    }\n    \n    // \u5904\u7406\u77ed\u94fe\n    if (urlObj.hostname === 'youtu.be' && pathname.length > 1) {\n      return pathname.substring(1).split('?')[0];\n    }\n  } catch (e) {\n    console.log(\"URL\u89e3\u6790\u5931\u8d25:\", e.message);\n  }\n  \n  return null;\n}\n\nconst videoId = extractVideoId($input.first().json.youtube_video_url);\n\n// \u8fd4\u56de\u7ed9Supabase\u8282\u70b9\u4f7f\u7528\u7684\u683c\u5f0f\nreturn [{\n  json: {\n    // \u539f\u6837\u4f20\u9012\u6240\u6709\u8f93\u5165\u5b57\u6bb5\n    ...input.json,\n    \n    // \u6dfb\u52a0\u63d0\u53d6\u7684\u4fe1\u606f\n    extracted_video_id: videoId,\n    youtube_video_id: videoId,\n    \n    // Supabase\u67e5\u8be2\u9700\u8981\u8fd9\u4e9b\u5b57\u6bb5\n    query_url: youtubeUrl,  // \u7528\u4e8eSupabase\u67e5\u8be2\u7684\u5b57\u6bb5\n    \n    // \u8c03\u8bd5\u4fe1\u606f\n    extraction_success: !!videoId,\n    input_type: typeof youtubeUrl\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        -256
+      ],
+      "id": "7530bff4-72c4-46b1-91db-e7e10db3dd0c",
+      "name": "splitid"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. \u53d6\u51fa\u5b57\u7b26\u4e32\nconst raw = $input.first().json.candidates[0].content.parts[0].text;\n\n// 2. \u5c1d\u8bd5\u63d0\u53d6 JSON \u90e8\u5206\uff08\u53bb\u6389\u53ef\u80fd\u7684 markdown \u4ee3\u7801\u5757\uff09\nlet jsonStr = raw.trim();\n\n// \u5982\u679c\u88ab ```json \u5305\u88f9\uff0c\u63d0\u53d6\u4e2d\u95f4\u90e8\u5206\nif (jsonStr.startsWith('```')) {\n  jsonStr = jsonStr.replace(/^```(?:json)?\\n?/, '').replace(/\\n?```$/, '');\n}\n\n// 3. \u5c1d\u8bd5\u89e3\u6790\nlet data;\ntry {\n  data = JSON.parse(jsonStr);\n} catch (e) {\n  // \u5982\u679c\u5931\u8d25\uff0c\u5c1d\u8bd5\u4fee\u590d\u5e38\u89c1\u95ee\u9898\n  try {\n    // \u66ff\u6362\u53ef\u80fd\u6709\u95ee\u9898\u7684\u5b57\u7b26\n    jsonStr = jsonStr\n      .replace(/[\\x00-\\x1F\\x7F]/g, ' ')  // \u79fb\u9664\u63a7\u5236\u5b57\u7b26\n      .replace(/\\n/g, '\\\\n')              // \u8f6c\u4e49\u6362\u884c\n      .replace(/\\r/g, '\\\\r');             // \u8f6c\u4e49\u56de\u8f66\n    data = JSON.parse(jsonStr);\n  } catch (e2) {\n    // \u6700\u540e\u624b\u6bb5\uff1a\u8fd4\u56de\u539f\u59cb\u6587\u672c\n    return [{ json: { error: 'JSON parse failed', raw: raw } }];\n  }\n}\n\n// 4. \u8fd4\u56de\nreturn [{ json: data }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        -64
+      ],
+      "id": "6647fd57-333c-4afc-8ecd-708805c7062b",
+      "name": "returanalyze"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process shot detection results and generate keyframes with motion prompts\n// ENSURES MINIMUM 4 FRAMES for FLF2V workflow\nconst result = $input.all();\nconst MIN_FRAMES = 4;\n\n// Get shot detection frames\nconst shotData = result[0]?.json;\nlet frames = [];\n\nif (Array.isArray(shotData)) {\n  shotData.forEach((frame, idx) => {\n    if (frame.url || frame.frame_url || frame.imageUrl) {\n      frames.push({\n        frame_url: frame.url || frame.frame_url || frame.imageUrl,\n        timestamp: parseFloat(frame.timestamp) || parseFloat(frame.time) || idx * 5,\n        shot_index: idx,\n        source: 'scene_detection'\n      });\n    }\n  });\n} else if (shotData && shotData.frames) {\n  shotData.frames.forEach((frame, idx) => {\n    frames.push({\n      frame_url: frame.url || frame.frame_url,\n      timestamp: parseFloat(frame.timestamp) || parseFloat(frame.time) || idx * 5,\n      shot_index: idx,\n      source: 'scene_detection'\n    });\n  });\n}\n\n// Sort frames by timestamp\nframes.sort((a, b) => a.timestamp - b.timestamp);\n\n// If we still have less than MIN_FRAMES, we need to report this\n// The workflow cannot generate new frame images, but we can:\n// 1. Use what we have if >= 2\n// 2. Error if < 2 (absolute minimum for FLF2V)\nconst originalFrameCount = frames.length;\n\nif (frames.length < 2) {\n  throw new Error(`Cannot proceed: Only ${frames.length} frame(s) detected. Need at least 2 frames for FLF2V.`);\n}\n\n// If we have between 2-3 frames, warn but continue (we'll get 1-2 video segments)\n// The AI Agent can decide if this is acceptable\nlet frameWarning = null;\nif (frames.length < MIN_FRAMES) {\n  frameWarning = `Warning: Only ${frames.length} frames detected (recommended: ${MIN_FRAMES}+). Video will have ${frames.length - 1} segment(s).`;\n  console.log(frameWarning);\n}\n\n// Try to get motion data from the video analysis (returanalyze node)\nlet motionData = [];\ntry {\n  const analysisNode = $('returanalyze');\n  if (analysisNode && analysisNode.first()) {\n    const analysis = analysisNode.first().json;\n    if (analysis && analysis.video_analysis && analysis.video_analysis.shot_language_and_visual_grammar) {\n      motionData = analysis.video_analysis.shot_language_and_visual_grammar;\n    } else if (analysis && analysis.shot_language_and_visual_grammar) {\n      motionData = analysis.shot_language_and_visual_grammar;\n    }\n  }\n} catch (e) {\n  console.log('Could not get motion data:', e.message);\n}\n\n// Build keyframes with motion prompts\nconst keyframes = frames.map((frame, idx) => {\n  let motionPrompt = 'Smooth cinematic motion, natural movement';\n  \n  if (motionData.length > 0) {\n    const matchingShot = motionData.find(shot => {\n      const shotNum = shot.shot_number || shot.shotNumber;\n      return shotNum === (idx + 1);\n    }) || motionData[idx];\n    \n    if (matchingShot) {\n      const cameraMove = matchingShot.camera_movement || matchingShot.cameraMovement || '';\n      const shotType = matchingShot.shot_type || matchingShot.shotType || '';\n      \n      const parts = [];\n      if (cameraMove) parts.push(cameraMove);\n      if (shotType) parts.push(shotType);\n      \n      if (parts.length > 0) {\n        motionPrompt = parts.join(', ');\n      }\n    }\n  }\n  \n  return {\n    frame_url: frame.frame_url,\n    timestamp: frame.timestamp,\n    prompt: motionPrompt\n  };\n});\n\nreturn {\n  json: {\n    result: result,\n    keyframes: keyframes,\n    keyframes_count: keyframes.length,\n    video_segments_count: Math.max(0, keyframes.length - 1),\n    motion_data_found: motionData.length > 0,\n    frame_warning: frameWarning,\n    meets_minimum: keyframes.length >= MIN_FRAMES,\n    video_url: $('crwalvideo').first().json.downloadedFileUrl\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        -64
+      ],
+      "id": "1cd965c3-e9ee-449c-be69-b808681a5462",
+      "name": "returclip"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "youtube_video_url": "https://www.youtube.com/shorts/IuCLMy4YVwU"
+        }
+      }
+    ],
+    "Set YouTube URL & Keys1": [
+      {
+        "json": {
+          "url": "https://www.youtube.com/shorts/IuCLMy4YVwU",
+          "youtubeApiKey": "AIzaSyCVlNefr6DCU2LnTxQQeFFiZ5nmjOkW6To",
+          "geminiApiKey": "AIzaSyCVlNefr6DCU2LnTxQQeFFiZ5nmjOkW6To"
+        }
+      }
+    ],
+    "Scene by Scene Analyzer Prompt1": [
+      {
+        "json": {
+          "candidates": [
+            {
+              "content": {
+                "parts": [
+                  {
+                    "text": "{\n  \"video_analysis\": {\n    \"script_extraction\": [\n      {\n        \"timestamp_start\": \"00:00\",\n        \"timestamp_end\": \"00:05\",\n        \"type\": \"on-screen_text\",\n        \"content\": \"I put my camera under the ice and I couldn't \ud83d\ude31 what I captured\",\n        \"implied_emotion\": \"surprise\",\n        \"tone\": \"awe\"\n      },\n      {\n        \"timestamp_start\": \"00:00\",\n        \"timestamp_end\": \"00:35\",\n        \"type\": \"background_music\",\n        \"content\": \"Ambient, slightly melancholic, building orchestral music.\",\n        \"implied_emotion\": \"anticipation, wonder, serenity\",\n        \"tone\": \"epic, mysterious\"\n      }\n    ],\n    \"shot_language_and_visual_grammar\": [\n      {\n        \"shot_number\": 1,\n        \"timestamp_start\": \"00:00\",\n        \"timestamp_end\": \"00:05\",\n        \"shot_type\": \"Medium-Wide Shot (establishing)\",\n        \"camera_movement\": \"Static\",\n        \"composition\": \"A person (back to camera, wearing a backpack) stands in shallow, clear water next to a large sheet of ice. Mountains rise in the background under a clear blue sky. The person is holding a pole, seemingly preparing to place a camera.\",\n        \"pacing_rhythm\": \"Slow, anticipatory.\",\n        \"transitions\": \"Hard cut to next shot.\",\n        \"storytelling_flow\": \"Establishes the setting (icy mountain lake) and introduces the main action/premise. The on-screen text directly states the intent and builds immediate curiosity.\",\n        \"engagement_effectiveness\": \"The text creates a strong hook, making the viewer wonder what will be captured. The visual sets a beautiful, serene, yet adventurous scene, contrasting clear water and ice with rugged mountains.\",\n        \"improvements_alternatives\": \"A slightly closer shot of the person's hands preparing the camera could emphasize the action and the delicate nature of the task. Alternatively, a quick cut to the camera itself being attached to the pole.\"\n      },\n      {\n        \"shot_number\": 2,\n        \"timestamp_start\": \"00:05\",\n        \"timestamp_end\": \"00:10\",\n        \"shot_type\": \"Over-Under Shot (half-in, half-out of water), Wide Angle\",\n        \"camera_movement\": \"Slow, smooth push-in/dolly forward, with a subtle pan right.\",\n        \"composition\": \"The waterline divides the frame, showing clear water with visible rocks below and the icy lake, distant mountains, and bright blue sky above. The camera moves along the edge of the ice.\",\n        \"pacing_rhythm\": \"Slow, smooth, contemplative.\",\n        \"transitions\": \"Smooth cut to next shot (which is a continuation of the camera's movement underwater).\",\n        \"storytelling_flow\": \"This shot acts as a bridge, transitioning from the 'above water' setup to the 'underwater' perspective. It hints at the hidden world below while still connecting to the surface environment.\",\n        \"engagement_effectiveness\": \"The over-under perspective is inherently engaging, offering a unique view of two distinct environments simultaneously. The clarity of the water and the reflections are visually appealing. The slow movement enhances the sense of entering a new space.\",\n        \"improvements_alternatives\": \"This shot is effective. A slightly longer hold on the initial over-under view before full submersion could allow the viewer more time to appreciate the dual perspective.\"\n      },\n      {\n        \"shot_number\": 3,\n        \"timestamp_start\": \"00:10\",\n        \"timestamp_end\": \"00:30\",\n        \"shot_type\": \"Underwater POV, Wide Angle\",\n        \"camera_movement\": \"Slow, smooth push-in/dolly forward, with subtle left-to-right pan.\",\n        \"composition\": \"The dominant feature is the underside of the ice sheet, glowing with a vibrant turquoise hue from the filtered sunlight. The deep blue water extends below, with textured rocks visible on the lake bed. The camera moves deeper under the ice, revealing its intricate formations.\",\n        \"pacing_rhythm\": \"Very slow, mesmerizing, almost meditative. The music swells significantly here.\",\n        \"transitions\": \"Smooth cut to next shot.\",\n        \"storytelling_flow\": \"This is the core 'reveal' shot, fulfilling the promise of the opening text. It showcases the unexpected and stunning beauty hidden beneath the ice. The slow movement allows for full appreciation of the details and the ethereal light.\",\n        \"engagement_effectiveness\": \"Highly engaging and emotionally impactful. The vibrant turquoise light, the unique texture of the ice from below, and the vastness of the clear underwater world evoke a strong sense of wonder and awe. The deliberate, unhurried movement, coupled with the swelling music, amplifies the emotional experience of discovery.\",\n        \"improvements_alternatives\": \"This shot is exceptionally well-executed. Perhaps a brief moment of stillness to fully absorb the scene before continuing the slow movement, or a slight variation in depth to show more of the lake bed's contours.\"\n      },\n      {\n        \"shot_number\": 4,\n        \"timestamp_start\": \"00:30\",\n        \"timestamp_end\": \"00:32\",\n        \"shot_type\": \"Underwater POV, Medium Shot (through a gap)\",\n        \"camera_movement\": \"Faster, more dynamic push-through.\",\n        \"composition\": \"The camera navigates a narrow opening between two large pieces of ice, momentarily framing the passage. More of the underwater landscape and the brighter surface light are visible beyond the gap.\",\n        \"pacing_rhythm\": \"Quicker, more dynamic, creating a sense of progression and slight urgency.\",\n        \"transitions\": \"Smooth cut to next shot.\",\n        \"storytelling_flow\": \"Adds a sense of active exploration and journey, moving from one hidden area under the ice to another. It breaks the meditative rhythm of the previous shot.\",\n        \"engagement_effectiveness\": \"The tighter framing and faster movement create a momentary sense of navigating a hidden passage, adding a dynamic contrast to the previous wide, slow shot. It feels like an active discovery.\",\n        \"improvements_alternatives\": \"The shot is well-placed to vary the rhythm. A slight pause before entering the gap could build more anticipation for what lies beyond.\"\n      },\n      {\n        \"shot_number\": 5,\n        \"timestamp_start\": \"00:32\",\n        \"timestamp_end\": \"00:35\",\n        \"shot_type\": \"Over-Under Shot (half-in, half-out of water), Wide Angle\",\n        \"camera_movement\": \"Slow, smooth push-in/dolly forward.\",\n        \"composition\": \"Similar to Shot 2, but the camera is now fully emerged from under the main ice sheet, showing open water, floating ice chunks, and the full mountain landscape under a bright, sunny blue sky.\",\n        \"pacing_rhythm\": \"Slow, concluding, serene.\",\n        \"transitions\": \"Video ends.\",\n        \"storytelling_flow\": \"Brings the viewer back to the surface, completing the journey from above, under, and back to above. It provides a sense of resolution and shows the beauty of the entire environment, now with a newfound appreciation for its hidden depths.\",\n        \"engagement_effectiveness\": \"The return to the expansive surface view, after witnessing the underwater marvels, is satisfying and provides a sense of completion. The bright sun and majestic landscape offer a strong, positive, and serene conclusion.\",\n        \"improvements_alternatives\": \"A final wide shot of the entire lake and mountains from a slightly elevated perspective (e.g., a drone shot) could offer an even grander and more encompassing conclusion, emphasizing the scale of the natural beauty.\"\n      }\n    ]\n  }\n}"
+                  }
+                ],
+                "role": "model"
+              },
+              "finishReason": "STOP",
+              "index": 0
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 10766,
+            "candidatesTokenCount": 1766,
+            "totalTokenCount": 14556,
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 165
+              },
+              {
+                "modality": "VIDEO",
+                "tokenCount": 9468
+              },
+              {
+                "modality": "AUDIO",
+                "tokenCount": 1133
+              }
+            ],
+            "thoughtsTokenCount": 2024
+          },
+          "modelVersion": "gemini-2.5-flash",
+          "responseId": "jNtQaafmN5K3vdIP2b79kAY"
+        }
+      }
+    ],
+    "returanalyze": [
+      {
+        "json": {
+          "video_analysis": {
+            "script_extraction": [
+              {
+                "timestamp_start": "00:00",
+                "timestamp_end": "00:05",
+                "type": "on-screen_text",
+                "content": "I put my camera under the ice and I couldn't \ud83d\ude31 what I captured",
+                "implied_emotion": "surprise",
+                "tone": "awe"
+              },
+              {
+                "timestamp_start": "00:00",
+                "timestamp_end": "00:35",
+                "type": "background_music",
+                "content": "Ambient, slightly melancholic, building orchestral music.",
+                "implied_emotion": "anticipation, wonder, serenity",
+                "tone": "epic, mysterious"
+              }
+            ],
+            "shot_language_and_visual_grammar": [
+              {
+                "shot_number": 1,
+                "timestamp_start": "00:00",
+                "timestamp_end": "00:05",
+                "shot_type": "Medium-Wide Shot (establishing)",
+                "camera_movement": "Static",
+                "composition": "A person (back to camera, wearing a backpack) stands in shallow, clear water next to a large sheet of ice. Mountains rise in the background under a clear blue sky. The person is holding a pole, seemingly preparing to place a camera.",
+                "pacing_rhythm": "Slow, anticipatory.",
+                "transitions": "Hard cut to next shot.",
+                "storytelling_flow": "Establishes the setting (icy mountain lake) and introduces the main action/premise. The on-screen text directly states the intent and builds immediate curiosity.",
+                "engagement_effectiveness": "The text creates a strong hook, making the viewer wonder what will be captured. The visual sets a beautiful, serene, yet adventurous scene, contrasting clear water and ice with rugged mountains.",
+                "improvements_alternatives": "A slightly closer shot of the person's hands preparing the camera could emphasize the action and the delicate nature of the task. Alternatively, a quick cut to the camera itself being attached to the pole."
+              },
+              {
+                "shot_number": 2,
+                "timestamp_start": "00:05",
+                "timestamp_end": "00:10",
+                "shot_type": "Over-Under Shot (half-in, half-out of water), Wide Angle",
+                "camera_movement": "Slow, smooth push-in/dolly forward, with a subtle pan right.",
+                "composition": "The waterline divides the frame, showing clear water with visible rocks below and the icy lake, distant mountains, and bright blue sky above. The camera moves along the edge of the ice.",
+                "pacing_rhythm": "Slow, smooth, contemplative.",
+                "transitions": "Smooth cut to next shot (which is a continuation of the camera's movement underwater).",
+                "storytelling_flow": "This shot acts as a bridge, transitioning from the 'above water' setup to the 'underwater' perspective. It hints at the hidden world below while still connecting to the surface environment.",
+                "engagement_effectiveness": "The over-under perspective is inherently engaging, offering a unique view of two distinct environments simultaneously. The clarity of the water and the reflections are visually appealing. The slow movement enhances the sense of entering a new space.",
+                "improvements_alternatives": "This shot is effective. A slightly longer hold on the initial over-under view before full submersion could allow the viewer more time to appreciate the dual perspective."
+              },
+              {
+                "shot_number": 3,
+                "timestamp_start": "00:10",
+                "timestamp_end": "00:30",
+                "shot_type": "Underwater POV, Wide Angle",
+                "camera_movement": "Slow, smooth push-in/dolly forward, with subtle left-to-right pan.",
+                "composition": "The dominant feature is the underside of the ice sheet, glowing with a vibrant turquoise hue from the filtered sunlight. The deep blue water extends below, with textured rocks visible on the lake bed. The camera moves deeper under the ice, revealing its intricate formations.",
+                "pacing_rhythm": "Very slow, mesmerizing, almost meditative. The music swells significantly here.",
+                "transitions": "Smooth cut to next shot.",
+                "storytelling_flow": "This is the core 'reveal' shot, fulfilling the promise of the opening text. It showcases the unexpected and stunning beauty hidden beneath the ice. The slow movement allows for full appreciation of the details and the ethereal light.",
+                "engagement_effectiveness": "Highly engaging and emotionally impactful. The vibrant turquoise light, the unique texture of the ice from below, and the vastness of the clear underwater world evoke a strong sense of wonder and awe. The deliberate, unhurried movement, coupled with the swelling music, amplifies the emotional experience of discovery.",
+                "improvements_alternatives": "This shot is exceptionally well-executed. Perhaps a brief moment of stillness to fully absorb the scene before continuing the slow movement, or a slight variation in depth to show more of the lake bed's contours."
+              },
+              {
+                "shot_number": 4,
+                "timestamp_start": "00:30",
+                "timestamp_end": "00:32",
+                "shot_type": "Underwater POV, Medium Shot (through a gap)",
+                "camera_movement": "Faster, more dynamic push-through.",
+                "composition": "The camera navigates a narrow opening between two large pieces of ice, momentarily framing the passage. More of the underwater landscape and the brighter surface light are visible beyond the gap.",
+                "pacing_rhythm": "Quicker, more dynamic, creating a sense of progression and slight urgency.",
+                "transitions": "Smooth cut to next shot.",
+                "storytelling_flow": "Adds a sense of active exploration and journey, moving from one hidden area under the ice to another. It breaks the meditative rhythm of the previous shot.",
+                "engagement_effectiveness": "The tighter framing and faster movement create a momentary sense of navigating a hidden passage, adding a dynamic contrast to the previous wide, slow shot. It feels like an active discovery.",
+                "improvements_alternatives": "The shot is well-placed to vary the rhythm. A slight pause before entering the gap could build more anticipation for what lies beyond."
+              },
+              {
+                "shot_number": 5,
+                "timestamp_start": "00:32",
+                "timestamp_end": "00:35",
+                "shot_type": "Over-Under Shot (half-in, half-out of water), Wide Angle",
+                "camera_movement": "Slow, smooth push-in/dolly forward.",
+                "composition": "Similar to Shot 2, but the camera is now fully emerged from under the main ice sheet, showing open water, floating ice chunks, and the full mountain landscape under a bright, sunny blue sky.",
+                "pacing_rhythm": "Slow, concluding, serene.",
+                "transitions": "Video ends.",
+                "storytelling_flow": "Brings the viewer back to the surface, completing the journey from above, under, and back to above. It provides a sense of resolution and shows the beauty of the entire environment, now with a newfound appreciation for its hidden depths.",
+                "engagement_effectiveness": "The return to the expansive surface view, after witnessing the underwater marvels, is satisfying and provides a sense of completion. The bright sun and majestic landscape offer a strong, positive, and serene conclusion.",
+                "improvements_alternatives": "A final wide shot of the entire lake and mountains from a slightly elevated perspective (e.g., a drone shot) could offer an even grander and more encompassing conclusion, emphasizing the scale of the natural beauty."
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "crwalvideo": [
+      {
+        "json": {
+          "audioOnlyUrl": "https://rr5---sn-a5mekndz.googlevideo.com/videoplayback?expire=1766928715&ei=69xQaZCDCqGLsfIP3u__2AQ&ip=23.104.162.13&id=o-AMkFmqDsd0ox8iqqxfDBT1nlipDyJx8JHvd68IfFVsV4&itag=251&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&cps=2&met=1766907115%2C&mh=08&mm=31%2C29&mn=sn-a5mekndz%2Csn-a5msenl7&ms=au%2Crdu&mv=m&mvi=5&pl=19&rms=au%2Cau&initcwndbps=646250&bui=AYUSA3CfCK3AVF048gNLPuviqfvGJGbrUvsMeodn70JAqr9xM1ZLAJF9Fwl_hze0uIEpBV122AC1hGg8&vprv=1&svpuc=1&mime=audio%2Fwebm&ns=OFNxkfq1HoNTjc9gfi6TMiUR&rqh=1&gir=yes&clen=583198&dur=35.401&lmt=1764660365634297&mt=1766906698&fvip=5&keepalive=yes&lmw=1&fexp=51557447%2C51565116%2C51565681%2C51580970&c=TVHTML5&sefc=1&txp=4402234&n=scRl5R56KREm2g&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=cps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps&lsig=APaTxxMwRQIgbXd9aLBi_0TZ0rm5BcrS3hDIbLX9fPJHCXhqEqo9G8ACIQC9Vk4TWJ1uIg-rhrN1TNDebilHVCk7HSbNaoEdgqCZ6w%3D%3D&sig=AJfQdSswRQIhAPK0ezqzF65kQZy_QmB162ny31a4fBKiggq42688HxywAiAHmpssuyKAvub3Q2K_aB-YccjAgTQm8_BIUF7Ul1amMA==",
+          "downloadedFileUrl": "https://storage.googleapis.com/hyperhusk01-function-result-public/IuCLMy4YVwU_1764659429.mp4.mp4",
+          "videoOnlyUrl": "https://rr5---sn-a5mekndz.googlevideo.com/videoplayback?expire=1766928715&ei=69xQaZCDCqGLsfIP3u__2AQ&ip=23.104.162.13&id=o-AMkFmqDsd0ox8iqqxfDBT1nlipDyJx8JHvd68IfFVsV4&itag=788&aitags=133%2C134%2C135%2C136%2C137%2C160%2C242%2C243%2C244%2C247%2C248%2C278%2C395%2C396%2C397%2C398%2C399%2C779%2C780%2C788&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&cps=2&met=1766907115%2C&mh=08&mm=31%2C29&mn=sn-a5mekndz%2Csn-a5msenl7&ms=au%2Crdu&mv=m&mvi=5&pl=19&rms=au%2Cau&initcwndbps=646250&bui=AYUSA3CfCK3AVF048gNLPuviqfvGJGbrUvsMeodn70JAqr9xM1ZLAJF9Fwl_hze0uIEpBV122AC1hGg8&vprv=1&svpuc=1&mime=video%2Fmp4&ns=OFNxkfq1HoNTjc9gfi6TMiUR&rqh=1&gir=yes&clen=2638267&dur=35.366&lmt=1764663456393539&mt=1766906698&fvip=5&keepalive=yes&lmw=1&fexp=51557447%2C51565116%2C51565681%2C51580970&c=TVHTML5&sefc=1&txp=440C234&n=scRl5R56KREm2g&sparams=expire%2Cei%2Cip%2Cid%2Caitags%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=cps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps&lsig=APaTxxMwRQIgbXd9aLBi_0TZ0rm5BcrS3hDIbLX9fPJHCXhqEqo9G8ACIQC9Vk4TWJ1uIg-rhrN1TNDebilHVCk7HSbNaoEdgqCZ6w%3D%3D&sig=AJfQdSswRgIhALWBAy1E4U27H1UDuL6qYK-m2twNDOpDeBAvVzMhk9KSAiEA4ZrP_z4Kbd2i2hxv1smcFROYWWAfy6j8yjDumSYC07g=",
+          "id": "IuCLMy4YVwU",
+          "fileKey": "IuCLMy4YVwU_1764659429.mp4.mp4",
+          "input": "https://www.youtube.com/shorts/IuCLMy4YVwU"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Set YouTube URL & Keys1": {
+      "main": [
+        [
+          {
+            "node": "Scene by Scene Analyzer Prompt1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scene by Scene Analyzer Prompt1": {
+      "main": [
+        [
+          {
+            "node": "returanalyze",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "splitid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "crwalvideo": {
+      "main": [
+        [
+          {
+            "node": "shotdeteandpic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "return1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set YouTube URL & Keys1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        []
+      ]
+    },
+    "splitid": {
+      "main": [
+        [
+          {
+            "node": "Get a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "shotdeteandpic": {
+      "main": [
+        [
+          {
+            "node": "returclip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "returanalyze": {
+      "main": [
+        [
+          {
+            "node": "crwalvideo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "returclip": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a21c1e6b-8c55-44de-b2ed-a951c4d613ef",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d73e47fbd672d304f06524b896d7eb8ee2688cc66dabdc7a4d0908c88a41b5f"
+  },
+  "id": "OyoUK6oyuXciOBt3",
+  "tags": []
+}

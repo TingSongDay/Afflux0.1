@@ -1,0 +1,803 @@
+{
+  "name": "tool_batch_gemini_edit_image",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "images",
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -384,
+        4848
+      ],
+      "id": "cdba0ba6-1617-40fc-99da-7fccdd591464",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 拆分 images 数组为多个 item\nconst images = $input.first().json.images;\n\nreturn images.map((img, index) => ({\n  json: {\n    prompt: img.prompt,\n    fileUrl: img.fileUrl,\n    segment_index: img.segment_index ?? index\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        4848
+      ],
+      "id": "a0cb9b51-507b-443e-a939-49ff602cb306",
+      "name": "Split Images"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.fileUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "product"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        96,
+        4848
+      ],
+      "id": "c15f5c0d-1691-400e-bbfb-a1014c6af7c4",
+      "name": "Download Images",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "edit",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash-image-preview",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash-image-preview"
+        },
+        "prompt": "={{ $json.prompt }}",
+        "images": {
+          "values": [
+            {
+              "binaryPropertyName": "product"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        352,
+        4848
+      ],
+      "id": "7d78d731-a03b-4b1b-add7-a590dc5e4570",
+      "name": "Gemini Edit (Concurrent)",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "lk2Hh7FYTTapvDqs",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ★★★ 核心修复：处理 Gemini 的混合结果 ★★★\nconst items = $input.all();\nconst originalItems = $('Split Images').all();\n\n// 这里的 items 长度应该和 originalItems 一样（因为我们选了 Continue）\n// 这样 index 就是一一对应的，再也不用担心乱序了！\n\nreturn items.map((item, index) => {\n  const original = originalItems[index]?.json || {};\n  \n  // 1. 检查是否有错误 (Gemini 节点报错时通常会有 error 字段，或者 binary 为空)\n  const hasError = item.json.error || !item.binary;\n  \n  if (hasError) {\n    // === 失败情况 (走 Fal) ===\n    return {\n      json: {\n        status: 'error',\n        segment_index: original.segment_index,\n        prompt: original.prompt,\n        fileUrl: original.fileUrl,\n        errorMsg: item.json.error || 'Unknown Error'\n      }\n    };\n  } else {\n    // === 成功情况 (走 S3) ===\n    // 提取 Binary\n    const inputBinary = item.binary || {};\n    const key = Object.keys(inputBinary).find(k => k !== 'data') || Object.keys(inputBinary)[0] || 'data';\n    \n    return {\n      json: {\n        status: 'success',\n        segment_index: original.segment_index,\n        prompt: original.prompt,\n        fileUrl: original.fileUrl\n      },\n      binary: {\n        edited: inputBinary[key]\n      }\n    };\n  }\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        4880
+      ],
+      "id": "fa214109-1345-45f6-a168-00d9bdf54c78",
+      "name": "Check & Route Results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-success",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        832,
+        4880
+      ],
+      "id": "0d4f9166-447c-43eb-a360-b9742dd81bfe",
+      "name": "Is Success?"
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "amz-bucket-oktale",
+        "fileName": "=n8n/batch_edit_{{ $json.segment_index }}_{{ $now.toMillis() }}.png",
+        "binaryPropertyName": "edited",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        4624
+      ],
+      "id": "7790339f-b575-404f-b41e-623633ed9ea1",
+      "name": "Upload to S3",
+      "credentials": {
+        "aws": {
+          "id": "iY5rz0uX4QJcPVkH",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 准备 Fal 输入\nreturn $input.all().map(item => ({\n  json: {\n    prompt: item.json.prompt,\n    image_url: item.json.fileUrl,\n    segment_index: item.json.segment_index\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        5152
+      ],
+      "id": "ce9591b0-c5c7-4bcc-868d-5310956b3d06",
+      "name": "Prep Fal Input"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://queue.fal.run/fal-ai/bytedance/seedream/v4/edit",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Key 314691ea-f16e-4b50-834a-51b9b235134e:5c1875d90a9d57eb2791b1acec81d311"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prompt",
+              "value": "={{ $json.prompt }}"
+            },
+            {
+              "name": "image_urls",
+              "value": "={{ [ $json.image_url ] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1616,
+        5152
+      ],
+      "id": "21ca4d17-c874-476a-9252-e8651c5311c9",
+      "name": "Fal Submit (Queue)",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        4608,
+        4656
+      ],
+      "id": "95060af8-b439-4720-b3d6-da87be3340b7",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "editedImages",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        4832,
+        4656
+      ],
+      "id": "7df22da4-3e47-4d3b-985b-954cdf061fe5",
+      "name": "Aggregate Results"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.response_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Key 314691ea-f16e-4b50-834a-51b9b235134e:5c1875d90a9d57eb2791b1acec81d311"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3776,
+        5184
+      ],
+      "id": "ff90ca7b-3c1b-463b-b903-7614c3615cc6",
+      "name": "Fal Get Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 提取 Fal 的 URL\nconst items = $input.all();\nconst infoInputs = $('Save Fal Info').all();\n\nconsole.log('Extract Fal - 收到', items.length, '个结果');\n\nreturn items.map((item, index) => {\n  const response = item.json;\n  const original = infoInputs[index]?.json || {};\n  \n  let finalUrl = '';\n  if (response.images && response.images.length > 0) {\n    finalUrl = response.images[0].url;\n  }\n\n  const segmentIndex = original.segment_index !== undefined ? original.segment_index : 9999;\n  \n  console.log(`Fal Result [${index}] -> segment_index: ${segmentIndex}`);\n\n  return {\n    json: {\n      segment_index: segmentIndex,\n      editedUrl: finalUrl,\n      source: 'fal_backup'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4288,
+        4848
+      ],
+      "id": "e0333e54-6ec8-4743-af0f-ebb91065f23a",
+      "name": "Extract Fal URL"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.status_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Key 314691ea-f16e-4b50-834a-51b9b235134e:5c1875d90a9d57eb2791b1acec81d311"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2336,
+        5232
+      ],
+      "id": "ba474af7-04e3-45d3-8056-5e7c55b9e12b",
+      "name": "Fal Poll Status",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const pollResults = $input.all();\nconst originalInputs = $('Save Fal Info').all();\n\nreturn pollResults.map((item, index) => {\n  const original = originalInputs[index]?.json;\n  \n  return {\n    json: {\n      status: item.json.status,\n      status_url: original.status_url,\n      response_url: original.response_url,\n      segment_index: original.segment_index\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        5232
+      ],
+      "id": "71ae23a2-2676-4401-9ab3-6d70865ed6be",
+      "name": "Update Loop Info"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "18f88a91-4543-41a4-9e8d-d65c43717596",
+              "leftValue": "={{ $json.allCompleted }}",
+              "rightValue": "COMPLETED",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3312,
+        5232
+      ],
+      "id": "dc2719ee-c184-4df3-9967-eb7c3ac107b3",
+      "name": "Is Completed?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 保存 Fal Submit 返回的关键信息\nconst allItems = $input.all();\nconst prepInputs = $('Prep Fal Input').all();\n\nconsole.log('Save Fal Info - 收到', allItems.length, '个提交响应');\n\nreturn allItems.map((item, index) => {\n  const segmentIndex = prepInputs[index]?.json.segment_index;\n  \n  console.log(`Fal Submit [${index}] -> segment_index: ${segmentIndex}`);\n  \n  return {\n    json: {\n      status_url: item.json.status_url,\n      response_url: item.json.response_url,\n      segment_index: segmentIndex,\n      status: 'IN_QUEUE'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2112,
+        5152
+      ],
+      "id": "7fbeda09-f52d-43b8-816e-8e8b534b3e42",
+      "name": "Save Fal Info"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1856,
+        5152
+      ],
+      "id": "682e85a4-c02f-4919-9e1e-8f962aeef56c",
+      "name": "Wait",
+      "webhookId": "75be9e50-227a-4541-a14d-0b2ca8863b5a"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ⚠️ 去重逻辑 - 优先保留 gemini 结果\nconst editedImages = $input.first().json.editedImages;\n\nconsole.log('=== Format Final Output ===');\nconsole.log('收到总计', editedImages.length, '个结果');\n\n// 按 segment_index 分组\nconst grouped = {};\neditedImages.forEach(img => {\n  const idx = img.segment_index;\n  if (!grouped[idx]) {\n    grouped[idx] = [];\n  }\n  grouped[idx].push(img);\n});\n\nconsole.log('分组结果:', Object.keys(grouped).map(k => `${k}: ${grouped[k].length}个`).join(', '));\n\n// 每个 index 只保留一个结果，优先 gemini\nconst deduped = [];\nObject.keys(grouped).forEach(idx => {\n  const items = grouped[idx];\n  const geminiItem = items.find(i => i.source === 'gemini');\n  const falItem = items.find(i => i.source === 'fal_backup');\n  \n  if (geminiItem && geminiItem.editedUrl) {\n    console.log(`Index ${idx}: 使用 Gemini 结果`);\n    deduped.push(geminiItem);\n  } else if (falItem && falItem.editedUrl) {\n    console.log(`Index ${idx}: 使用 Fal 备份结果`);\n    deduped.push(falItem);\n  } else {\n    console.log(`Index ${idx}: ⚠️ 无有效结果`);\n  }\n});\n\n// 排序\ndeduped.sort((a, b) => {\n  const aIdx = typeof a.segment_index === 'number' ? a.segment_index : 99999;\n  const bIdx = typeof b.segment_index === 'number' ? b.segment_index : 99999;\n  return aIdx - bIdx;\n});\n\nconsole.log('最终输出', deduped.length, '个结果');\n\nreturn {\n  json: {\n    success: true,\n    editedImages: deduped,\n    count: deduped.length\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5056,
+        4656
+      ],
+      "id": "79fb9b28-a7eb-4a15-a3cb-be69a25f6f64",
+      "name": "Format Final Output"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "tasks",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2816,
+        5232
+      ],
+      "id": "5ca5ed01-84e2-4850-9092-6ee3f6e3a6f0",
+      "name": "Aggregate Poll Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tasks = $input.first().json.tasks;\nconst allCompleted = tasks.every(t => t.status === 'COMPLETED');\nconst anyFailed = tasks.some(t => t.status === 'FAILED');\n\nreturn {\n  json: {\n    tasks: tasks,\n    allCompleted: allCompleted,\n    anyFailed: anyFailed,\n    completedCount: tasks.filter(t => t.status === 'COMPLETED').length,\n    totalCount: tasks.length\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3072,
+        5232
+      ],
+      "id": "1096c42f-f227-4fd2-891a-b68ca27da507",
+      "name": "Check All Completed"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3520,
+        5328
+      ],
+      "id": "29c8e1ed-ac59-494c-b0d5-5f4435c036af",
+      "name": "Wait1",
+      "webhookId": "a375799a-6b6f-492b-aa14-dfbf2a5a6e03"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tasks = $input.first().json.tasks;\nreturn tasks.map(task => ({ json: task }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3552,
+        5056
+      ],
+      "id": "676c09a8-4487-48b9-9761-ea7b95a1c326",
+      "name": "Split for Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ⚠️ 新增：拆分 tasks 数组用于循环轮询\nconst tasks = $input.first().json.tasks;\nreturn tasks.map(task => ({ json: task }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3744,
+        5328
+      ],
+      "id": "21b59302-8839-4dd9-86a2-4429c89dd51a",
+      "name": "Split for Loop"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 获取 S3 上传后的结果\nconst items = $input.all();\n\n// ★★★ 关键点：引用 S3 之前的那个节点 ★★★\n// 你的 IF 节点名字应该叫 'Is Success?'，如果不是请在这里改名\nconst originalItems = $('Is Success?').all();\n\nreturn items.map((item, index) => {\n  let segmentIndex = undefined;\n\n  // 1. 优先使用 pairedItem 找回数据 (最稳健)\n  if (item.pairedItem) {\n    // 兼容数组或对象格式\n    const pair = Array.isArray(item.pairedItem) ? item.pairedItem[0] : item.pairedItem;\n    // pair.item 就是上游节点数组的下标\n    if (pair && originalItems[pair.item]) {\n      segmentIndex = originalItems[pair.item].json.segment_index;\n    }\n  }\n\n  // 2. 备用方案：直接使用当前循环的 index\n  // (在 S3 这种线性处理中，顺序通常是一致的)\n  if (segmentIndex === undefined && originalItems[index]) {\n    segmentIndex = originalItems[index].json.segment_index;\n  }\n\n  // 3. 最后的兜底\n  if (segmentIndex === undefined) {\n    segmentIndex = 9999;\n  }\n\n  return {\n    json: {\n      segment_index: segmentIndex,\n      editedUrl: item.json.Location || item.json.url || '',\n      source: 'gemini'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        4624
+      ],
+      "id": "aa34a4d5-3cf1-4e29-9bf3-d0fcf4de9994",
+      "name": "Extract S3 URL"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "images": [
+            {
+              "fileUrl": "https://video-analyze-perframe.s3.us-east-2.amazonaws.com/5313ip2watA/5313ip2watA_000_at_0_00s.jpg",
+              "prompt": "Replace the human subject with Squidward (章鱼哥) while preserving the bedroom background and original lighting. Keep the same pose: holding a stack of sweaters and smiling subtly. Outfit: transform the pile into Squidward-sized colorful autumn sweaters draped over his tentacles. Photorealistic, seamless composite, consistent skin/texture for Squidward, natural shadows, maintain aspect ratio 9:16, no added text or logos.",
+              "segment_index": 0
+            },
+            {
+              "fileUrl": "https://video-analyze-perframe.s3.us-east-2.amazonaws.com/5313ip2watA/5313ip2watA_001_at_2_97s.jpg",
+              "prompt": "Replace the human with Squidward wearing a navy blue long-sleeve top over a white camisole, a light blue denim mini-skirt adapted to Squidward's body, and brown boots adapted to his feet. He should hold a brown shoulder bag. Keep the same pose and confident expression. Photorealistic composite, consistent lighting and shadows, natural integration.",
+              "segment_index": 1
+            },
+            {
+              "fileUrl": "https://video-analyze-perframe.s3.us-east-2.amazonaws.com/5313ip2watA/5313ip2watA_003_at_5_73s.jpg",
+              "prompt": "Replace the human with Squidward wearing a light grey button-up cardigan over a white crop top, light blue wide-leg jeans, brown shoulder bag; pose with hand on hip and confident expression. Preserve background, lighting, and framing. Photorealistic composite.",
+              "segment_index": 2
+            },
+            {
+              "fileUrl": "https://video-analyze-perframe.s3.us-east-2.amazonaws.com/5313ip2watA/5313ip2watA_002_at_4_37s.jpg",
+              "prompt": "Replace the human with Squidward wearing a burgundy long-sleeve sweater, ripped wide-leg jeans adapted for Squidward, and a white shoulder bag. Pose with hand on hip. Maintain original background, lighting, and camera framing. Photorealistic composite.",
+              "segment_index": 3
+            },
+            {
+              "fileUrl": "https://video-analyze-perframe.s3.us-east-2.amazonaws.com/5313ip2watA/5313ip2watA_004_at_7_17s.jpg",
+              "prompt": "Replace the human with Squidward wearing a brown off-shoulder cropped sweatshirt over a light yellow top, dark wash wide-leg jeans, white shoulder bag; pose with hand on hip. Maintain original background and lighting. Photorealistic composite.",
+              "segment_index": 4
+            },
+            {
+              "fileUrl": "https://video-analyze-perframe.s3.us-east-2.amazonaws.com/5313ip2watA/5313ip2watA_005_at_8_53s.jpg",
+              "prompt": "Replace the human with Squidward wearing a light blue long-sleeve top, dark wash wide-leg jeans, white shoulder bag; pose with hand on hip and subtle smile. Preserve background, lighting, and framing. Photorealistic composite.",
+              "segment_index": 5
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Split Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Images": {
+      "main": [
+        [
+          {
+            "node": "Download Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Images": {
+      "main": [
+        [
+          {
+            "node": "Gemini Edit (Concurrent)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Edit (Concurrent)": {
+      "main": [
+        [
+          {
+            "node": "Check & Route Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Check & Route Results": {
+      "main": [
+        [
+          {
+            "node": "Is Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Success?": {
+      "main": [
+        [
+          {
+            "node": "Upload to S3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep Fal Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fal Submit (Queue)": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Format Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fal Get Result": {
+      "main": [
+        [
+          {
+            "node": "Extract Fal URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Fal URL": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Fal Poll Status": {
+      "main": [
+        [
+          {
+            "node": "Update Loop Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Loop Info": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Poll Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Completed?": {
+      "main": [
+        [
+          {
+            "node": "Split for Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Fal Info": {
+      "main": [
+        [
+          {
+            "node": "Fal Poll Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Save Fal Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Poll Results": {
+      "main": [
+        [
+          {
+            "node": "Check All Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check All Completed": {
+      "main": [
+        [
+          {
+            "node": "Is Completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Split for Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split for Results": {
+      "main": [
+        [
+          {
+            "node": "Fal Get Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split for Loop": {
+      "main": [
+        [
+          {
+            "node": "Fal Poll Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to S3": {
+      "main": [
+        [
+          {
+            "node": "Extract S3 URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Fal Input": {
+      "main": [
+        [
+          {
+            "node": "Fal Submit (Queue)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract S3 URL": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1f82b85a-6aae-4729-a333-456742e05441",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d73e47fbd672d304f06524b896d7eb8ee2688cc66dabdc7a4d0908c88a41b5f"
+  },
+  "id": "Nyn2U1aT2u7jQlWL",
+  "tags": []
+}
